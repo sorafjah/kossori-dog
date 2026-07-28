@@ -73,6 +73,15 @@
     touch-action:none; box-shadow:0 3px 8px rgba(0,0,0,0.35);
   }
   #bark-btn.cool { opacity:0.45; }
+  #view-btn {
+    position:absolute; left:calc(24px + env(safe-area-inset-left)); bottom:calc(178px + env(safe-area-inset-bottom));
+    min-width:96px; height:46px; padding:0 14px; border-radius:23px;
+    background:rgba(60,80,110,0.85); border:2px solid rgba(255,255,255,0.5);
+    color:#fff; font-size:14px; font-weight:700; font-family:inherit;
+    display:flex; align-items:center; justify-content:center;
+    touch-action:manipulation; z-index:8; box-shadow:0 3px 8px rgba(0,0,0,0.35);
+  }
+  #view-btn:active { transform:scale(0.94); }
 
   #actRing {
     position:absolute; left:50%; bottom:24%; transform:translateX(-50%);
@@ -164,11 +173,11 @@
 </style>
 </head>
 <body>
-<!-- build: 2026-07-28h -->
+<!-- build: 2026-07-28j stage2 -->
 
 <div id="ui">
-  スコア: <span id="score">0</span> &nbsp; たべた: <span id="eaten">0</span>/<span id="total">0</span><br>
-  のこり: <span id="timeLeft">180</span>びょう &nbsp; バレた: <span id="caughtCount">0</span>/3
+  <span id="stageName">キッチン</span> &nbsp; スコア: <span id="score">0</span> &nbsp; たべた: <span id="eaten">0</span>/<span id="total">0</span><br>
+  バレた: <span id="caughtCount">0</span>/3
   <div id="riskWrap">おなかのぐあい
     <div id="riskBar"><div id="riskFill"></div></div>
   </div>
@@ -189,6 +198,7 @@
 <div id="joystick-base"><div id="joystick-stick"></div></div>
 <div id="jump-btn"><div id="jump-charge"></div><span id="jump-label">ジャンプ</span></div>
 <div id="bark-btn">ワン！</div>
+<div id="view-btn">視点：みおろし</div>
 
 <div id="qte">
   <div id="qteStep"></div>
@@ -208,7 +218,9 @@
   <p>ゴミばこや いすは おすと たおれる。<br>れいぞうこは まえで <b>じっとする</b> と あけられる。</p>
   <p>とちゅうで <b>おじゃまネコ</b> が しのびこんでくる。<br>ネコが たべたり たおしたりしたことも <b>ぜんぶ いぬのせい</b>！<br>ちかづいて なんども ぶつかる（しずか）か、<br><b>ワン！</b>で おいはらう（はやいが ものおとになる）。</p>
   <p>たべこぼしは そのばで <b>じっとして</b> はなでかくす。<br>かいぬしに しょうこを みつかると さがしに くる！<br>みつかったら、たっぷり とぼけて ごまかせ！</p>
-  <p><b>180びょう</b> たつか、<b>3かい</b> みつかると おしまい。</p>
+  <p><b>ドアの ひかる わ</b> を ふむと となりの へやへ いける。<br>キッチンを あらしたら <b>リビング</b> へ！</p>
+  <p><b>視点</b> ボタンで いぬ目線に きりかえられる。</p>
+  <p><b>たべものが なくなる</b>か、<b>3かい</b> みつかると そのへやは おしまい。</p>
   <button id="startBtn">はじめる</button>
 </div>
 
@@ -304,7 +316,6 @@ const P = {
   SPILL_CHANCE: 0.55,
   MOUTH_DIRTY_TIME: 7.0,
   QTE_PASS: 60,
-  GAME_TIME: 180,       // 制限時間（秒）
   MAX_CAUGHT: 3         // これだけバレたら終了
 };
 
@@ -348,6 +359,16 @@ fill.position.set(-6, 6, 2);
 scene.add(fill);
 
 /* ============================================================
+   3b. ステージ管理（キッチン / リビング）
+   構築物はステージごとのGroupに入れ、表示を切り替えるだけで場面転換する。
+   furniture / foods / evidences の参照先も差し替えるので、
+   既存のAI・当たり判定・QTE等のロジックはそのまま流用できる。
+   ============================================================ */
+const kitchenRoot = new THREE.Group(); scene.add(kitchenRoot);
+const livingRoot  = new THREE.Group(); scene.add(livingRoot); livingRoot.visible = false;
+let stageRoot = kitchenRoot;   // 構築先。living構築時に差し替える
+
+/* ============================================================
    3. 部屋
    ============================================================ */
 const matFloor = new THREE.MeshStandardMaterial({ color:0xb9946a, roughness:0.92 });
@@ -379,13 +400,19 @@ const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(3.4,2.7,0.16), matWood);
 doorFrame.position.set(0,1.35,-9.2); scene.add(doorFrame);
 const doorHole = new THREE.Mesh(new THREE.BoxGeometry(3.0,2.5,0.1), new THREE.MeshBasicMaterial({color:0x120d09}));
 doorHole.position.set(0,1.25,-9.1); scene.add(doorHole);
+// ドア前の目印（ここを通ると となりのへやへ移動する）
+const doorMark = new THREE.Mesh(new THREE.RingGeometry(0.7,0.95,24),
+  new THREE.MeshBasicMaterial({ color:0x9ad8ff, transparent:true, opacity:0.5, side:THREE.DoubleSide }));
+doorMark.rotation.x = -Math.PI/2;
+doorMark.position.set(DOOR.x, 0.02, DOOR.z + 1.5);
+scene.add(doorMark);
 
 /* ============================================================
    4. 家具・足場
    f = {minX,maxX,minZ,maxZ, top, blocks, noisy, kind, mesh, baseX, baseZ, wobble}
    top = 上に乗れる高さ。blocks=視線を遮るか。
    ============================================================ */
-const furniture = [];
+let furniture = [];
 function reg(f){ furniture.push(f); return f; }
 
 function addBox(o){
@@ -393,7 +420,7 @@ function addBox(o){
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
   mesh.position.set(x, h/2, z);
   mesh.castShadow = true; mesh.receiveShadow = true;
-  scene.add(mesh);
+  stageRoot.add(mesh);
   return reg({ minX:x-w/2, maxX:x+w/2, minZ:z-d/2, maxZ:z+d/2,
     top, blocks, noisy, kind, mesh, baseX:x, baseZ:z, wobble:0, hw:w/2, hd:d/2 });
 }
@@ -402,17 +429,17 @@ function addBox(o){
 addBox({ x:-10.2, z:-2, w:2.6, d:11, h:1.0, mat:matWood, top:1.11 });
 const counterTop = new THREE.Mesh(new THREE.BoxGeometry(2.8,0.12,11.2), matWhite);
 counterTop.position.set(-10.2,1.05,-2); counterTop.castShadow = true; counterTop.receiveShadow = true;
-scene.add(counterTop);
+stageRoot.add(counterTop);
 
 // 冷蔵庫
 const fridgeF = addBox({ x:-10.3, z:6.6, w:2.4, d:2.6, h:2.4, mat:matSteel, top:2.40 });
 const fridgeLine = new THREE.Mesh(new THREE.BoxGeometry(0.06,2.2,0.06), matDark);
-fridgeLine.position.set(-9.05,1.3,6.6); scene.add(fridgeLine);
+fridgeLine.position.set(-9.05,1.3,6.6); stageRoot.add(fridgeLine);
 // 冷蔵庫のドア（片側ヒンジで開く）
 const FRIDGE_FRONT_X = -9.1, FRIDGE_HINGE_Z = 6.6 - 1.28;
 const fridgeDoorPivot = new THREE.Group();
 fridgeDoorPivot.position.set(FRIDGE_FRONT_X, 0, FRIDGE_HINGE_Z);
-scene.add(fridgeDoorPivot);
+stageRoot.add(fridgeDoorPivot);
 const fridgeDoor = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.15, 2.5), matSteel);
 fridgeDoor.position.set(0, 1.15, 1.25);
 fridgeDoor.castShadow = true;
@@ -425,7 +452,7 @@ let fridgeOpen = 0, fridgeOpened = false, fridgeHoldT = 0;
 const fridgeMarker = new THREE.Mesh(new THREE.RingGeometry(0.4,0.5,20),
   new THREE.MeshBasicMaterial({ color:0x8fd6ff, transparent:true, opacity:0.55, side:THREE.DoubleSide }));
 fridgeMarker.rotation.x = -Math.PI/2; fridgeMarker.position.set(FRIDGE_FRONT_X+0.5, 0.02, 6.6);
-scene.add(fridgeMarker);
+stageRoot.add(fridgeMarker);
 
 // 東 食器棚（低めの台）
 addBox({ x:10.4, z:1.5, w:2.2, d:8, h:1.25, mat:matWood, top:1.25 });
@@ -435,11 +462,11 @@ const TABLE = { x:1.2, z:0.5, top:1.03 };
 addBox({ x:TABLE.x, z:TABLE.z, w:4.6, d:2.8, h:0.9, mat:matWood, top:1.03 });
 const tableTop = new THREE.Mesh(new THREE.BoxGeometry(5.0,0.16,3.2), matWood);
 tableTop.position.set(TABLE.x,0.95,TABLE.z); tableTop.castShadow = true; tableTop.receiveShadow = true;
-scene.add(tableTop);
+stageRoot.add(tableTop);
 
 
 /* --- いす（動かせる・倒せる） --- */
-const chairs = [];
+let chairs = [];
 function makeChair(cx, cz, faceX, faceZ){
   const g = new THREE.Group();
   const inner = new THREE.Group();
@@ -454,7 +481,7 @@ function makeChair(cx, cz, faceX, faceZ){
   });
   g.position.set(cx,0,cz);
   g.rotation.y = Math.atan2(faceX-cx, faceZ-cz);
-  scene.add(g);
+  stageRoot.add(g);
   const f = reg({ minX:cx-0.55, maxX:cx+0.55, minZ:cz-0.55, maxZ:cz+0.55,
     top:0.56, blocks:false, noisy:true, kind:'chair', mesh:g, inner,
     baseX:cx, baseZ:cz, wobble:0, hw:0.55, hd:0.55, slide:0, toppled:false });
@@ -463,7 +490,7 @@ function makeChair(cx, cz, faceX, faceZ){
 }
 makeChair(-1.9, 0.5, TABLE.x, TABLE.z);
 makeChair( 4.3, 0.5, TABLE.x, TABLE.z);
-makeChair( 1.2,-1.9, TABLE.x, TABLE.z);
+makeChair( 1.2, 2.9, TABLE.x, TABLE.z);
 // 食器棚のよこの踏み台（棚の上へ行くための足場）
 const stool = makeChair(8.6, 2.0, 10.4, 1.5);
 
@@ -478,8 +505,8 @@ canBody.position.y = 0.575; canBody.castShadow = true; trashInner.add(canBody);
 const canLid = new THREE.Mesh(new THREE.CylinderGeometry(0.68,0.68,0.12,16), matDark);
 canLid.position.y = 1.2; trashInner.add(canLid);
 trashGroup.position.set(TRASH.x,0,TRASH.z);
-scene.add(trashGroup);
-const trashF = reg({ minX:TRASH.x-0.66, maxX:TRASH.x+0.66, minZ:TRASH.z-0.66, maxZ:TRASH.z+0.66,
+stageRoot.add(trashGroup);
+let trashF = reg({ minX:TRASH.x-0.66, maxX:TRASH.x+0.66, minZ:TRASH.z-0.66, maxZ:TRASH.z+0.66,
   top:1.26, blocks:false, noisy:true, kind:'trash', mesh:trashGroup, inner:trashInner,
   baseX:TRASH.x, baseZ:TRASH.z, wobble:0, hw:0.66, hd:0.66, push:0, toppled:false });
 
@@ -708,7 +735,7 @@ const FOOD_DEFS = [
   { name:'チーズ',      type:'RISKY', score:16, color:0xf0d24a, x:10.4, z:-0.6, y:1.45 }
 ];
 
-const foods = [];
+let foods = [];
 function makeFood(def){
   const g = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({
@@ -725,7 +752,7 @@ function makeFood(def){
       transparent:true, opacity:0.4, side:THREE.DoubleSide }));
   halo.rotation.x = -Math.PI/2; halo.position.y = -0.18; g.add(halo);
   g.position.set(def.x, def.y, def.z);
-  scene.add(g);
+  stageRoot.add(g);
   const f = { def:{...def}, group:g, mesh:m, halo, eaten:false, locked:false,
               baseY:def.y, x:def.x, z:def.z, y:def.y, falling:false, vy:0 };
   foods.push(f);
@@ -746,11 +773,145 @@ const fridgeFoods = FRIDGE_FOOD_DEFS.map(def => {
 });
 document.getElementById('total').textContent = foods.length;
 
+/* ============================================================
+   7b. リビング（ステージ2）の構築
+   同じヘルパーで家具・食べ物を作り、livingRoot に入れる。
+   ステージ切り替え時に furniture / foods / chairs / trashF の
+   参照を差し替えるので、既存のAI・当たり判定はそのまま動く。
+   ============================================================ */
+const kitchenFurniture = furniture;
+const kitchenFoods     = foods;
+const kitchenChairs    = chairs;
+const kitchenTrashF    = trashF;
+
+const livingFurniture = [];
+const livingFoods     = [];
+const livingChairs    = [];
+furniture = livingFurniture;
+foods     = livingFoods;
+stageRoot = livingRoot;
+
+// ソファ（登れる）
+const SOFA = { x:-7.6, z:2.0 };
+addBox({ x:SOFA.x, z:SOFA.z, w:3.0, d:5.4, h:0.62, mat:matWood, top:0.62 });
+const sofaCushion = new THREE.Mesh(new THREE.BoxGeometry(2.7,0.3,5.0),
+  new THREE.MeshStandardMaterial({ color:0x7a6f9a, roughness:0.9 }));
+sofaCushion.position.set(SOFA.x, 0.77, SOFA.z);
+sofaCushion.castShadow = true; sofaCushion.receiveShadow = true;
+livingRoot.add(sofaCushion);
+const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(0.55,1.15,5.4),
+  new THREE.MeshStandardMaterial({ color:0x6b6089, roughness:0.9 }));
+sofaBack.position.set(SOFA.x-1.25, 1.2, SOFA.z);
+sofaBack.castShadow = true;
+livingRoot.add(sofaBack);
+
+// テレビ台（高い場所）
+const TVS = { x:8.8, z:2.0 };
+addBox({ x:TVS.x, z:TVS.z, w:1.8, d:5.0, h:1.05, mat:matWood, top:1.05 });
+const tvPanel = new THREE.Mesh(new THREE.BoxGeometry(0.16,1.5,3.2),
+  new THREE.MeshStandardMaterial({ color:0x24262b, roughness:0.35, metalness:0.5 }));
+tvPanel.position.set(TVS.x+0.25, 1.85, TVS.z);
+tvPanel.castShadow = true;
+livingRoot.add(tvPanel);
+const tvScreen = new THREE.Mesh(new THREE.PlaneGeometry(3.0,1.35),
+  new THREE.MeshStandardMaterial({ color:0x2c4a63, emissive:0x14263a }));
+tvScreen.rotation.y = -Math.PI/2;
+tvScreen.position.set(TVS.x+0.16, 1.85, TVS.z);
+livingRoot.add(tvScreen);
+
+// ラグ
+const rug = new THREE.Mesh(new THREE.CircleGeometry(4.0, 32),
+  new THREE.MeshStandardMaterial({ color:0xa8734f, roughness:1 }));
+rug.rotation.x = -Math.PI/2; rug.position.set(0.5, 0.015, 0.8);
+rug.receiveShadow = true;
+livingRoot.add(rug);
+
+// ローテーブル
+addBox({ x:0.8, z:0.8, w:2.6, d:1.6, h:0.5, mat:matWood, top:0.5 });
+
+// --- 押すと倒れる家具（本棚・盆栽）。kind:'chair' で既存の転倒処理に乗せる ---
+function makeTopplable(cx, cz, w, d, h, color, label){
+  const g = new THREE.Group();
+  const inner = new THREE.Group();
+  g.add(inner);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),
+    new THREE.MeshStandardMaterial({ color, roughness:0.85 }));
+  body.position.y = h/2; body.castShadow = true; body.receiveShadow = true;
+  inner.add(body);
+  g.position.set(cx,0,cz);
+  livingRoot.add(g);
+  const f = reg({ minX:cx-w/2, maxX:cx+w/2, minZ:cz-d/2, maxZ:cz+d/2,
+    top:h, blocks:(h>0.8), noisy:true, kind:'chair', mesh:g, inner,
+    baseX:cx, baseZ:cz, wobble:0, hw:w/2, hd:d/2, slide:0, toppled:false, label });
+  livingChairs.push(f);
+  return { f, inner };
+}
+const shelf = makeTopplable(2.6, -6.4, 3.2, 0.8, 1.7, 0x8a6440, '本だな');
+[0.5, 1.0, 1.5].forEach(y=>{
+  const p = new THREE.Mesh(new THREE.BoxGeometry(3.0,0.06,0.7),
+    new THREE.MeshStandardMaterial({ color:0x6f4f31 }));
+  p.position.y = y; shelf.inner.add(p);
+});
+const bonsai = makeTopplable(-7.2, -5.4, 0.9, 0.9, 0.6, 0x7a5540, 'ぼんさい');
+const bonsaiTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.1,0.5,8),
+  new THREE.MeshStandardMaterial({ color:0x5b4030 }));
+bonsaiTrunk.position.y = 0.85; bonsai.inner.add(bonsaiTrunk);
+const bonsaiLeaf = new THREE.Mesh(new THREE.SphereGeometry(0.42,10,8),
+  new THREE.MeshStandardMaterial({ color:0x4f7a45, roughness:0.9 }));
+bonsaiLeaf.scale.set(1.2,0.7,1.2);
+bonsaiLeaf.position.y = 1.2; bonsaiLeaf.castShadow = true;
+bonsai.inner.add(bonsaiLeaf);
+
+// --- クッション（ひっかき回すと散らかって証拠になる） ---
+const cushions = [];
+[[-6.2,-0.4],[-6.2,4.2],[2.2,3.6]].forEach(([cx,cz])=>{
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.85,0.28,0.85),
+    new THREE.MeshStandardMaterial({ color:0xd08a9a, roughness:0.95 }));
+  m.position.set(cx, 0.16, cz);
+  m.rotation.y = Math.random()*0.8;
+  m.castShadow = true;
+  livingRoot.add(m);
+  cushions.push({ mesh:m, x:cx, z:cz, scratched:false, progress:0, baseY:0.16 });
+});
+
+// --- リビングの食べ物 ---
+const LIVING_FOOD_DEFS = [
+  { name:'ポテチ',      type:'RISKY', score:18, color:0xe8c15a, x:1.2,  z:2.6,  y:0.28 },
+  { name:'せんべい',    type:'SAFE',  score:14, color:0xd8b070, x:-2.6, z:-2.0, y:0.28 },
+  { name:'クッキー',    type:'SAFE',  score:16, color:0xc79a5c, x:5.4,  z:-3.4, y:0.28 },
+  { name:'ぶどう',      type:'TOXIC', score:-16,color:0x7a4a8a, x:-3.0, z:5.6,  y:0.28 },
+  // ソファの上
+  { name:'サンドイッチ',type:'SAFE',  score:22, color:0xe4c98a, x:-7.6, z:0.4,  y:1.02 },
+  { name:'チョコバー',  type:'TOXIC', score:-20,color:0x4a2c1a, x:-7.6, z:3.6,  y:1.02 },
+  // ローテーブルの上
+  { name:'ケーキ',      type:'RISKY', score:24, color:0xf5c9d8, x:0.8,  z:0.8,  y:0.72 },
+  // テレビ台の上
+  { name:'ジャーキー',  type:'SAFE',  score:28, color:0xa9603c, x:8.8,  z:0.4,  y:1.26 },
+  { name:'ナッツ',      type:'RISKY', score:18, color:0xcfa76a, x:8.8,  z:3.6,  y:1.26 }
+];
+LIVING_FOOD_DEFS.forEach(makeFood);
+
+// --- 構築おわり。キッチンに戻しておく ---
+// リビングにはゴミ箱がないが、trashF を参照するコードが各所にあるため
+// 「絶対に倒れない・当たり判定に登録しない」ダミーを用意しておく
+const livingTrashF = {
+  minX:9999, maxX:9999, minZ:9999, maxZ:9999, top:0,
+  blocks:false, noisy:false, kind:'trash',
+  mesh:new THREE.Group(), inner:new THREE.Group(),
+  baseX:9999, baseZ:9999, wobble:0, hw:0, hd:0, push:0, toppled:false, dummy:true
+};
+
+furniture = kitchenFurniture;
+foods     = kitchenFoods;
+stageRoot = kitchenRoot;
+
 
 /* ============================================================
    8. 証拠
    ============================================================ */
-const evidences = [];
+const kitchenEvidences = [];
+const livingEvidences  = [];
+let evidences = kitchenEvidences;
 const evGeo = new THREE.SphereGeometry(0.09,6,6);
 // 床に置かれる物（食べこぼし・落下した食べ物）が、椅子とテーブルの隙間など
 // いぬが物理的に近づけない場所に入ってしまうと永久に取れなくなる。
@@ -807,7 +968,7 @@ function spawnEvidence(x,z,color){
   const mark = new THREE.Mesh(new THREE.RingGeometry(0.34,0.42,18),
     new THREE.MeshBasicMaterial({color:0xff9a5a, transparent:true, opacity:0.55, side:THREE.DoubleSide}));
   mark.rotation.x = -Math.PI/2; mark.position.y = 0.02; g.add(mark);
-  g.position.set(x,0,z); scene.add(g);
+  g.position.set(x,0,z); stageRoot.add(g);
   evidences.push({ group:g, mark, x, z, progress:0 });
 }
 
@@ -925,6 +1086,7 @@ const G = {
   chew:0, idleTimer:0, rolling:false,
   vy:0, onGround:true, groundY:0, jumpActive:false, jumpHold:0,
   climbing:false, climbTarget:null, climbHoldTimer:0,
+  stage:'kitchen',
   gameTime:0, caughtCount:0, ended:false,
   frames:0, elapsed:0, started:false
 };
@@ -1019,7 +1181,7 @@ function toppleChair(f){
 }
 
 function pushTrash(nx,nz){
-  if (trashF.toppled) return;
+  if (trashF.toppled || trashF.dummy) return;
   trashF.push += G.lastDt || 0.016;
   trashF.inner.rotation.z = THREE.MathUtils.clamp(-nx,-1,1) * trashF.push * 0.5;
   trashF.inner.rotation.x = THREE.MathUtils.clamp(nz,-1,1) * trashF.push * 0.5;
@@ -1027,6 +1189,7 @@ function pushTrash(nx,nz){
 }
 
 function topplTrash(nx,nz){
+  if (trashF.dummy) return;   // リビングにはゴミ箱が無い
   trashF.toppled = true;
   trashF.top = 0.5;
   trashF.inner.rotation.z = -nx*Math.PI*0.5;
@@ -1066,6 +1229,88 @@ function bigNoise(text,x,z){
   G.alertGauge = Math.min(P.ALERT_MAX, G.alertGauge + P.BIG_NOISE_BONUS);
   showMsg(text, 1500);
   investigate(x,z);
+}
+
+/* ============================================================
+   12b. ステージ切り替え（キッチン ⇄ リビング）
+   ============================================================ */
+const STAGE = {
+  kitchen: { name:'キッチン', floorColor:0xb9946a, spawn:{ x:0, z:5.5 },
+             caught:0, cleared:false, ended:false },
+  living:  { name:'リビング', floorColor:0x9c8f7a, spawn:{ x:0, z:5.5 },
+             caught:0, cleared:false, ended:false }
+};
+
+function activeStage(){ return STAGE[G.stage]; }
+
+function switchStage(to){
+  if (G.stage === to) return;
+  // いま居たステージの記録を保存しておく
+  const from = STAGE[G.stage];
+  from.caught = G.caughtCount;
+  from.eatenSoFar = G.eaten;
+  from.catAte = CAT.ate;
+  from.catWrecked = CAT.wrecked;
+  G.stage = to;
+
+  // 表示の切り替え
+  kitchenRoot.visible = (to === 'kitchen');
+  livingRoot.visible  = (to === 'living');
+  floor.material.color.setHex(STAGE[to].floorColor);
+
+  // 参照の差し替え（これで既存のAI・当たり判定がそのまま新しい部屋で動く）
+  if (to === 'living'){
+    furniture = livingFurniture; foods = livingFoods;
+    chairs = livingChairs;       trashF = livingTrashF;
+    evidences = livingEvidences; stageRoot = livingRoot;
+  } else {
+    furniture = kitchenFurniture; foods = kitchenFoods;
+    chairs = kitchenChairs;       trashF = kitchenTrashF;
+    evidences = kitchenEvidences; stageRoot = kitchenRoot;
+  }
+
+  // 証拠の表示も切り替える
+  kitchenEvidences.forEach(e=>{ e.group.visible = (to === 'kitchen'); });
+  livingEvidences.forEach(e=>{ e.group.visible = (to === 'living'); });
+
+  // 犬を入口の内側へ
+  const sp = STAGE[to].spawn;
+  dog.position.set(sp.x, 0, sp.z);
+  G.vy = 0; G.onGround = true; G.climbing = false; G.climbTarget = null;
+  dogYaw = Math.PI; dog.rotation.y = dogYaw;
+
+  // 部屋ごとの飼い主・ネコは独立。入った時点でリセットする
+  G.state = 'NORMAL';
+  G.alertGauge = 0;
+  G.suspicious = false; G.suspicionTimer = 0;
+  G.normalTimer = rand(P.NORMAL_MIN, P.NORMAL_MAX);
+  owner.visible = false;
+  owner.position.set(DOOR.x, 0, DOOR.z-2);
+  CAT.state = 'GONE';
+  CAT.timer = rand(P.CAT_FIRST_DELAY_MIN, P.CAT_FIRST_DELAY_MAX);
+  cat.visible = false;
+
+  // バレ回数・食べた数はステージごとに別カウント
+  G.caughtCount = STAGE[to].caught;
+  G.eaten = STAGE[to].eatenSoFar || 0;
+  CAT.ate = STAGE[to].catAte || 0;
+  CAT.wrecked = STAGE[to].catWrecked || 0;
+  G.pendingEnd = null;
+
+  doorCooldown = 2.0;
+  updateHUD();
+  showMsg(`${STAGE[to].name} に やってきた！ 🚪`, 1800);
+}
+
+let doorCooldown = 0;
+function updateDoor(dt){
+  if (doorCooldown > 0){ doorCooldown -= dt; return; }
+  if (G.state === 'CAUGHT') return;
+  const d = Math.hypot(dog.position.x-doorMark.position.x, dog.position.z-doorMark.position.z);
+  doorMark.material.opacity = 0.35 + Math.sin(G.elapsed*3)*0.2;
+  if (d < 0.95 && dog.position.y < 0.4){
+    switchStage(G.stage === 'kitchen' ? 'living' : 'kitchen');
+  }
 }
 
 /* ============================================================
@@ -1162,6 +1407,7 @@ function setState(s){
     showMsg('だれか きた…！ 👣', 1200);
   } else if (s === 'CAUGHT'){
     G.caughtCount++;
+    activeStage().caught = G.caughtCount;   // ステージごとに別カウント
     updateHUD();
     if (G.caughtCount >= P.MAX_CAUGHT){
       startQTE();     // 最後の1回はQTEをやらせてから終了演出へ
@@ -1348,7 +1594,7 @@ function pickCatTarget(){
     const d = Math.hypot(cat.position.x-f.x, cat.position.z-f.z) + (f.y>0.6 ? -1.5 : 0); // 高い所ほど好む
     if (d < bd){ bd=d; best=f; kind='food'; }
   });
-  const wreckables = [...chairs, trashF].filter(f=>!f.toppled);
+  const wreckables = [...chairs, trashF].filter(f=>!f.toppled && !f.dummy);
   wreckables.forEach(f=>{
     const d = Math.hypot(cat.position.x-f.baseX, cat.position.z-f.baseZ) + 2.5; // 食べ物よりは優先度低め
     if (d < bd){ bd=d; best=f; kind='wreck'; }
@@ -1660,6 +1906,12 @@ function catDoAction(){
       spawnEvidence(f.x+rand(-0.4,0.4), f.z+rand(-0.4,0.4), f.def.color);
       showMsg(`ネコに ${f.def.name} を たべられた… 😾`, 1500);
       updateHUD();
+      // ネコが最後の1個を食べてしまった場合も、食べ物切れとして終了する
+      const left = foods.filter(x=>!x.eaten && !x.locked).length;
+      if (left === 0 && G.state !== 'CAUGHT' && !G.ended){
+        showMsg('たべものが なくなった…！', 1800);
+        setTimeout(()=>{ if (G.state !== 'CAUGHT') endGame('allEaten'); }, 1900);
+      }
     }
   } else if (CAT.targetKind === 'wreck'){
     const f = CAT.target;
@@ -1692,6 +1944,15 @@ function applyCatVisual(dt, moving){
 }
 
 /* --- いぬが吠える（速いが物音になる） --- */
+// 視点切り替え（みおろし / いぬの後ろ）
+let camMode = 'top';
+const viewBtn = document.getElementById('view-btn');
+viewBtn.addEventListener('click', ()=>{
+  camMode = (camMode === 'top') ? 'low' : 'top';
+  viewBtn.textContent = (camMode === 'top') ? '視点：みおろし' : '視点：いぬ目線';
+  camera._look = null;   // 切り替え時に補間をリセットして即座に馴染ませる
+});
+
 let barkCD = 0;
 function bark(){
   if (barkCD > 0 || G.state === 'CAUGHT' || !G.started) return;
@@ -1810,7 +2071,10 @@ function findClimbTarget(){
     const vx = cx-dog.position.x, vz = cz-dog.position.z;
     const vl = Math.hypot(vx,vz);
     if (vl > 0.001) facing = (vx/vl)*fx + (vz/vl)*fz;
-    const score = facing*2.0 - d*0.8;
+    // すでに密着している(d≈DOG_R)場合は、方向ベクトルがほぼゼロになり
+    // facingの計算が不安定になる。密着しているものは無条件で最優先にする。
+    const touching = d < DOG_R + 0.08;
+    const score = touching ? (1000 - d) : (facing*2.0 - d*0.8);
     if (score > bestScore){ bestScore = score; best = f; }
   }
   return best;
@@ -2069,15 +2333,25 @@ function updateActions(dt){
       bestD = d; best = { kind:'ev', ev, label:'はなで かくしてる…', time:P.HIDE_TIME };
     }
   }
-  // 冷蔵庫のドア
-  if (!fridgeOpened){
+  // 冷蔵庫のドア（キッチンのみ）
+  if (G.stage === 'kitchen' && !fridgeOpened){
     const d = Math.hypot(dog.position.x-fridgeMarker.position.x, dog.position.z-fridgeMarker.position.z);
     fridgeMarker.material.opacity = 0.4 + Math.sin(G.elapsed*3)*0.2;
     if (d < 1.4 && d < bestD && dog.position.y < 0.4){
       bestD = d; best = { kind:'fridge', label:'まえあしで とびらを あけてる…', time:P.FRIDGE_OPEN_TIME };
     }
-  } else {
+  } else if (fridgeOpened) {
     fridgeMarker.visible = false;
+  }
+  // クッション（リビングのみ）。ひっかき回すと散らかって証拠になる
+  if (G.stage === 'living'){
+    for (const cu of cushions){
+      if (cu.scratched) continue;
+      const d = Math.hypot(dog.position.x-cu.x, dog.position.z-cu.z);
+      if (d < 1.3 && d < bestD && dog.position.y < 0.5){
+        bestD = d; best = { kind:'cushion', cu, label:'クッションを ひっかいてる…', time:1.0 };
+      }
+    }
   }
 
   nearAction = best;
@@ -2085,6 +2359,7 @@ function updateActions(dt){
   // 進行 / リセット
   evidences.forEach(ev=>{ if (!best || best.ev !== ev) ev.progress = 0; });
   if (!best || best.kind !== 'fridge') fridgeHoldT = 0;
+  cushions.forEach(cu=>{ if (!best || best.cu !== cu) cu.progress = 0; });
 
   let ratio = 0;
   if (best && still){
@@ -2092,6 +2367,10 @@ function updateActions(dt){
       best.ev.progress += dt;
       ratio = best.ev.progress / best.time;
       if (best.ev.progress >= best.time){ removeEvidence(best.ev); nearAction = null; ratio = 0; }
+    } else if (best.kind === 'cushion'){
+      best.cu.progress += dt;
+      ratio = best.cu.progress / best.time;
+      if (best.cu.progress >= best.time){ scratchCushion(best.cu); nearAction = null; ratio = 0; }
     } else {
       fridgeHoldT += dt;
       ratio = fridgeHoldT / best.time;
@@ -2101,6 +2380,7 @@ function updateActions(dt){
   } else if (best){
     noseRub = Math.max(0, noseRub - dt*6);
     if (best.kind === 'ev') best.ev.progress = 0;
+    else if (best.kind === 'cushion') best.cu.progress = 0;
     else fridgeHoldT = 0;
   }
 
@@ -2116,6 +2396,22 @@ function updateActions(dt){
     actRing.style.opacity = 0;
     noseRub = Math.max(0, noseRub - dt*6);
   }
+}
+
+function scratchCushion(cu){
+  cu.scratched = true;
+  cu.mesh.rotation.z = rand(-0.7, 0.7);
+  cu.mesh.rotation.y += rand(-1.2, 1.2);
+  cu.mesh.position.y = cu.baseY - 0.04;
+  cu.mesh.position.x += rand(-0.5, 0.5);
+  cu.mesh.position.z += rand(-0.5, 0.5);
+  SFX.drag();
+  G.score += 3;
+  G.alertGauge = Math.min(P.ALERT_MAX, G.alertGauge + 8);
+  // 羽根が散らばって証拠になる
+  for (let i=0;i<2;i++) spawnEvidence(cu.x+rand(-0.7,0.7), cu.z+rand(-0.7,0.7), 0xf0e2e6);
+  showMsg('クッション ぐちゃぐちゃ！ +3 🪶', 1300);
+  updateHUD();
 }
 
 function removeEvidence(ev){
@@ -2397,8 +2693,8 @@ function finishQTE(){
     setPose({});
     if (G.pendingEnd === 'caught'){
       endGame('caught');
-    } else if (G.gameTime <= 0){
-      endGame('time');
+    } else if (foods.filter(x=>!x.eaten && !x.locked).length === 0){
+      endGame('allEaten');
     } else {
       setState('NORMAL');
       showMsg(safe ? 'いまのうち…！ 🐾' : 'こんどは バレないぞ！ 🐾', 1600);
@@ -2416,6 +2712,8 @@ const riskEl  = document.getElementById('riskFill');
 function updateHUD(){
   scoreEl.textContent = G.score;
   eatenEl.textContent = G.eaten;
+  const sn = document.getElementById('stageName');
+  if (sn) sn.textContent = activeStage().name;
   // 「total」は常に「いぬが実際に完食しうる数（ネコに取られた分は除く）」を表示する
   totalEl.textContent = Math.max(G.eaten, foods.length - CAT.ate);
   riskEl.style.width = G.riskGauge + '%';
@@ -2445,13 +2743,9 @@ function animate(){
   const dt = Math.min(clock.getDelta(), 1/30);
   G.elapsed += dt; G.frames++; G.lastDt = dt;
 
-  if (G.started && !G.ended){
-    G.gameTime -= dt;
-    document.getElementById('timeLeft').textContent = Math.max(0, Math.ceil(G.gameTime));
+  if (G.started && !G.ended && !G.paused){
     document.getElementById('caughtCount').textContent = G.caughtCount;
-    if (G.gameTime <= 0 && G.state !== 'CAUGHT'){
-      endGame('time');
-    }
+    updateDoor(dt);
 
     if (G.noiseCooldown > 0) G.noiseCooldown -= dt;
     if (G.mouthDirty > 0) G.mouthDirty -= dt;
@@ -2483,15 +2777,28 @@ function animate(){
     const mz = (dog.position.z + owner.position.z)/2;
     want = new THREE.Vector3(mx + CAM_CAUGHT.x, dog.position.y + CAM_CAUGHT.y, mz + CAM_CAUGHT.z);
     lookAt = new THREE.Vector3(dog.position.x, dog.position.y + 0.9, dog.position.z);
+  } else if (camMode === 'low'){
+    // いぬのすぐ後ろ・やや上から。完全な一人称にはせず、床が見える高さと角度にする
+    const back = 2.6, up = 1.55;
+    want = new THREE.Vector3(
+      dog.position.x - Math.sin(dogYaw)*back,
+      dog.position.y + up,
+      dog.position.z - Math.cos(dogYaw)*back);
+    // 少し先の床を見る＝わずかに見下ろす
+    lookAt = new THREE.Vector3(
+      dog.position.x + Math.sin(dogYaw)*3.2,
+      dog.position.y + 0.25,
+      dog.position.z + Math.cos(dogYaw)*3.2);
   } else {
     const cx = THREE.MathUtils.clamp(dog.position.x, ROOM.minX+2, ROOM.maxX-2);
     const cz = THREE.MathUtils.clamp(dog.position.z, ROOM.minZ+1, ROOM.maxZ+1);
     want = new THREE.Vector3(cx + CAM_OFF.x, dog.position.y*0.5 + CAM_OFF.y, cz + CAM_OFF.z);
     lookAt = new THREE.Vector3(cx, dog.position.y*0.5 + 0.9, cz - 0.5);
   }
-  camera.position.lerp(want, Math.min(1, 4.0*dt));
+  const camLerp = (camMode === 'low' && G.state !== 'CAUGHT') ? 7.0 : 4.0;
+  camera.position.lerp(want, Math.min(1, camLerp*dt));
   if (!camera._look) camera._look = lookAt.clone();
-  camera._look.lerp(lookAt, Math.min(1, 5.0*dt));
+  camera._look.lerp(lookAt, Math.min(1, (camMode==='low'?9.0:5.0)*dt));
   camera.lookAt(camera._look);
 
   renderer.render(scene, camera);
@@ -2507,7 +2814,6 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
   startOverlay.style.display = 'none';
   G.started = true;
   G.ended = false;
-  G.gameTime = P.GAME_TIME;
   G.caughtCount = 0;
   G.pendingEnd = null;
   G.normalTimer = rand(P.NORMAL_MIN, P.NORMAL_MAX);
@@ -2520,20 +2826,32 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
 const endOverlay = document.getElementById('endOverlay');
 function endGame(reason){
   if (G.ended) return;
-  G.ended = true;
+
+  const st = activeStage();
+  st.ended = true;
+  st.cleared = (reason !== 'caught');
+  st.eaten = G.eaten;
+  st.eatenSoFar = G.eaten;
+  st.caught = G.caughtCount;
+  st.catAte = CAT.ate;
+  st.catWrecked = CAT.wrecked;
+  st.reason = reason;
+
+  const other = (G.stage === 'kitchen') ? STAGE.living : STAGE.kitchen;
+  const bothDone = other.ended;
 
   const allEaten = foods.filter(f=>!f.eaten && !f.locked).length === 0;
   let title;
-  if (reason === 'caught') title = 'とうとう みつかった…！';
-  else if (allEaten)       title = 'ぜんぶ たべた！ だいまんぞく！';
-  else                     title = 'じかん切れ！';
+  if (reason === 'caught') title = `${st.name}で とうとう みつかった…！`;
+  else if (allEaten)       title = `${st.name} せいは！ ぜんぶ たべた！`;
+  else                     title = `${st.name} しゅうりょう`;
 
   // --- 総括コメント ---
   const lines = [];
   if (G.eaten === 0){
     lines.push('なにも たべられなかった… つぎは がんばろう。');
   } else if (allEaten){
-    lines.push('キッチンの ごはんを のこらず せいあつ した。でんせつの いぬ。');
+    lines.push(`${st.name}の ごはんを のこらず せいあつ した。`);
   } else if (G.eaten >= 10){
     lines.push('たくさん たべた！ おなかも こころも まんぷく。');
   } else if (G.eaten >= 5){
@@ -2552,12 +2870,28 @@ function endGame(reason){
 
   if (CAT.ate > 0 || CAT.wrecked > 0){
     lines.push(`ネコに ${CAT.ate}こ よこどりされ、${CAT.wrecked}かい やらかされた…`);
-  } else {
-    lines.push('ネコの こうげきを かんぜんに ふうじた！');
   }
-
   if (G.riskGauge >= 70){
     lines.push('ただ、おなかが かなり あやしい。あとで たいへんかも…');
+  }
+
+  if (bothDone){
+    // 両方おわった＝ゲーム全体の総括
+    G.ended = true;
+    title = 'ぜんぶの へやを あらしつくした！';
+    lines.length = 0;
+    lines.push(`キッチン：${STAGE.kitchen.eaten||0}こ たべて ${STAGE.kitchen.caught}かい バレた`);
+    lines.push(`リビング：${STAGE.living.eaten||0}こ たべて ${STAGE.living.caught}かい バレた`);
+    const totalCaught = STAGE.kitchen.caught + STAGE.living.caught;
+    if (totalCaught === 0) lines.push('いちどとして しっぽを つかまれなかった。でんせつの いぬ。');
+    else if (totalCaught <= 2) lines.push('ほとんど バレずに やりきった。みごとな うでまえ。');
+    else lines.push('なんども おこられたが、おなかは まんぞく。');
+    document.getElementById('retryBtn').textContent = 'もういちど あそぶ';
+  } else {
+    // 片方だけ終了。もう一方へ促す
+    lines.push('');
+    lines.push(`まだ ${other.name} が のこっている！`);
+    document.getElementById('retryBtn').textContent = `${other.name} へ いく`;
   }
 
   document.getElementById('endTitle').textContent = title;
@@ -2566,9 +2900,19 @@ function endGame(reason){
   document.getElementById('endScore').textContent = G.score;
   document.getElementById('endSummary').innerHTML = lines.join('<br>');
   endOverlay.style.display = 'flex';
+  G.paused = true;
 }
+
 document.getElementById('retryBtn').addEventListener('click', ()=>{
-  location.reload();
+  const other = (G.stage === 'kitchen') ? 'living' : 'kitchen';
+  if (G.ended || STAGE[other].ended){
+    location.reload();
+    return;
+  }
+  // まだ終わっていない方の部屋へ移動して続行
+  endOverlay.style.display = 'none';
+  G.paused = false;
+  switchStage(other);
 });
 
 /* ============================================================
@@ -2589,6 +2933,9 @@ window.__G = {
   get mouthDirty(){ return G.mouthDirty; },
   get rolling(){ return G.rolling; },
   get climbing(){ return G.climbing; },
+  get stage(){ return G.stage; },
+  get stageInfo(){ return STAGE; },
+  get camMode(){ return camMode; },
   get catState(){ return CAT.state; },
   get catPos(){ return cat.position; },
   get catAte(){ return CAT.ate; },
@@ -2603,7 +2950,13 @@ window.__G = {
   get qteAct(){ return QTE.seq[QTE.index] ? QTE.seq[QTE.index].id : null; },
   get frames(){ return G.frames; },
   get elapsed(){ return G.elapsed; },
-  foods, evidences, furniture, chairs, dog, owner, camera, scene, pose,
+  // 配列はステージ切り替えで参照先が変わるため、ゲッターで現在の中身を返す
+  get foods(){ return foods; },
+  get evidences(){ return evidences; },
+  get furniture(){ return furniture; },
+  get chairs(){ return chairs; },
+  get cushions(){ return cushions; },
+  dog, owner, cat, camera, scene, pose,
   api: {
     start(){ document.getElementById('startBtn').click(); },
     forceState(s){ setState(s); },
@@ -2620,6 +2973,8 @@ window.__G = {
     toppleChair(i){ toppleChair(chairs[i??0]); },
     openFridge(){ if(!fridgeOpened) openFridge(); },
     findClimbTarget(){ return findClimbTarget(); },
+    switchStage(s){ switchStage(s); },
+    toggleView(){ document.getElementById('view-btn').click(); },
     catEnter(){ catEnter(); },
     catFlee(){ catFlee('テスト'); },
     bark(){ barkCD = 0; bark(); },
