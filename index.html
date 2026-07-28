@@ -64,6 +64,15 @@
     opacity:0.85;
   }
   #jump-label { position:relative; z-index:1; }
+  #bark-btn {
+    position:absolute; right:calc(140px + env(safe-area-inset-right)); bottom:calc(40px + env(safe-area-inset-bottom));
+    width:78px; height:78px; border-radius:50%;
+    background:rgba(200,110,150,0.85); border:3px solid rgba(255,255,255,0.6);
+    color:#fff; font-size:15px; font-weight:700; z-index:8;
+    display:flex; align-items:center; justify-content:center;
+    touch-action:none; box-shadow:0 3px 8px rgba(0,0,0,0.35);
+  }
+  #bark-btn.cool { opacity:0.45; }
 
   #actRing {
     position:absolute; left:50%; bottom:24%; transform:translateX(-50%);
@@ -131,13 +140,35 @@
     box-shadow:0 4px 0 #a1521a;
   }
   #startBtn:active { transform:translateY(3px); box-shadow:0 1px 0 #a1521a; }
+
+  #endOverlay {
+    position:absolute; inset:0; z-index:40; background:rgba(28,20,14,0.94);
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    color:#ffe9c0; text-align:center; padding:24px; box-sizing:border-box;
+  }
+  #endOverlay h1 { font-size:30px; margin:0 0 10px; color:#ffcf5c; }
+  #endOverlay .stat { font-size:17px; line-height:2.0; }
+  #endOverlay .summary {
+    font-size:15.5px; line-height:1.95; color:#ffe0a8; margin:6px 0 16px;
+    max-width:560px; border-top:1px solid rgba(255,207,92,0.3);
+    border-bottom:1px solid rgba(255,207,92,0.3); padding:12px 8px;
+  }
+  #endOverlay .final { font-size:26px; font-weight:700; color:#fff36b; margin-top:8px; }
+  #retryBtn {
+    margin-top:22px; min-width:200px; min-height:56px; padding:0 26px;
+    font-size:20px; font-weight:700; font-family:inherit;
+    background:#e07a2f; color:#fff; border:none; border-radius:28px;
+    box-shadow:0 4px 0 #a1521a;
+  }
+  #retryBtn:active { transform:translateY(3px); box-shadow:0 1px 0 #a1521a; }
 </style>
 </head>
 <body>
-<!-- build: 2026-07-27b -->
+<!-- build: 2026-07-28h -->
 
 <div id="ui">
-  スコア: <span id="score">0</span> &nbsp; たべた: <span id="eaten">0</span>/<span id="total">0</span>
+  スコア: <span id="score">0</span> &nbsp; たべた: <span id="eaten">0</span>/<span id="total">0</span><br>
+  のこり: <span id="timeLeft">180</span>びょう &nbsp; バレた: <span id="caughtCount">0</span>/3
   <div id="riskWrap">おなかのぐあい
     <div id="riskBar"><div id="riskFill"></div></div>
   </div>
@@ -157,6 +188,7 @@
 
 <div id="joystick-base"><div id="joystick-stick"></div></div>
 <div id="jump-btn"><div id="jump-charge"></div><span id="jump-label">ジャンプ</span></div>
+<div id="bark-btn">ワン！</div>
 
 <div id="qte">
   <div id="qteStep"></div>
@@ -172,11 +204,21 @@
 <div id="startOverlay">
   <h1>ないしょのごはん</h1>
   <p>かいぬしがキッチンにいないあいだに、こっそりごはんをたべよう。</p>
-  <p><b>みみ</b>がピクピクうごいたら、かいぬしがちかい。<br>みみのむきが、かいぬしのいるほうこう。</p>
-  <p><b>ジャンプ</b>は ながおしで たかくとべる。<br>いす → テーブル → たなの うえ へ のぼれる。</p>
-  <p>ゴミばこを おしたおす、テーブルクロスを ひっぱる、<br>いすを おしてうごかす…… わるさは いろいろ。</p>
-  <p>たべこぼしは そのばで <b>じっとして</b> はなでかくす。<br>みつかったら、たっぷり とぼけて ごまかせ！</p>
+  <p>だいや つくえの そばで <b>ジャンプ ながおし</b> すると、<br>よじのぼって うえの ごはんが たべられる。</p>
+  <p>ゴミばこや いすは おすと たおれる。<br>れいぞうこは まえで <b>じっとする</b> と あけられる。</p>
+  <p>とちゅうで <b>おじゃまネコ</b> が しのびこんでくる。<br>ネコが たべたり たおしたりしたことも <b>ぜんぶ いぬのせい</b>！<br>ちかづいて なんども ぶつかる（しずか）か、<br><b>ワン！</b>で おいはらう（はやいが ものおとになる）。</p>
+  <p>たべこぼしは そのばで <b>じっとして</b> はなでかくす。<br>かいぬしに しょうこを みつかると さがしに くる！<br>みつかったら、たっぷり とぼけて ごまかせ！</p>
+  <p><b>180びょう</b> たつか、<b>3かい</b> みつかると おしまい。</p>
   <button id="startBtn">はじめる</button>
+</div>
+
+<div id="endOverlay">
+  <h1 id="endTitle">おしまい！</h1>
+  <div id="endSummary" class="summary"></div>
+  <div class="stat">たべた かず: <span id="endEaten">0</span></div>
+  <div class="stat">みつかった かい数: <span id="endCaught">0</span></div>
+  <div class="final">スコア: <span id="endScore">0</span></div>
+  <button id="retryBtn">もういちど あそぶ</button>
 </div>
 
 <script type="importmap">
@@ -203,20 +245,20 @@ document.addEventListener('touchend', e => {
    1. パラメータ
    ============================================================ */
 const P = {
-  // 状態遷移
-  NORMAL_MIN: 6, NORMAL_MAX: 11,
-  OWNER_STAY_MIN: 16, OWNER_STAY_MAX: 26,
-  OWNER_WAIT_MIN: 1.2, OWNER_WAIT_MAX: 2.8,
+  // 状態遷移（ひとの出現頻度を下げ、1回の滞在も短めに）
+  NORMAL_MIN: 16, NORMAL_MAX: 28,
+  OWNER_STAY_MIN: 10, OWNER_STAY_MAX: 16,
+  OWNER_WAIT_MIN: 0.5, OWNER_WAIT_MAX: 1.4,
   OWNER_SPEED: 2.6,
   // 警戒度
   ALERT_MAX: 100,
   ALERT_DECAY: 7,
-  ALERT_RISE_MAX: 30,
-  DETECT_RANGE: 8.0,
-  OCCLUSION_FACTOR: 0.3,
-  HIGH_GROUND_MUL: 1.7,      // 高い所にいると目立つ
-  EVIDENCE_SEEN_RISE: 10,
+  // 察知（距離による自然上昇）は廃止。物音・視認・現場発見のみで警戒度が動く。
   SUSPICION_CHASE: 55,       // これを超えると犬の方へ寄ってくる
+  MESS_INSPECT_DIST: 0.9,    // 飼い主が散らかりの現場に到達したとみなす距離
+  MESS_CATCH_DIST: 3.2,      // 現場到達時、犬がこの距離内にいたら現行犯
+  SUSPICION_TIME: 12,        // 証拠を見つけたあと、犬を探し回る時間
+  SUSPICION_RETARGET: 0.8,   // 追跡中に犬の位置を捉え直す間隔
   // 視界
   VIEW_ANGLE: 70 * Math.PI/180,
   VIEW_DIST: 5.2,
@@ -235,15 +277,35 @@ const P = {
   JUMP_HOLD_T: 0.22,
   STEP_TOLERANCE: 0.2,    // 着地できる許容差
   BLOCK_TOL: 0.05,        // 壁として効かなくなる許容差（頂点付近のめり込み防止）
+  // 段差のよじ登り（長押し）
+  CLIMB_HOLD_TIME: 0.14,     // これだけ押し続けるとよじ登り開始（短くして乗りやすく）
+  CLIMB_SPEED: 4.6,          // よじ登り中の上昇速度 m/s
+  CLIMB_MAX_HEIGHT: 2.6,     // 現在地からこの高さまでならよじ登れる
+  CLIMB_APPROACH: 0.75,      // 対象に近づいたと判定する余裕距離（広げて掴みやすく）
+  // おじゃまネコ
+  CAT_FIRST_DELAY_MIN: 8, CAT_FIRST_DELAY_MAX: 15,   // 最初に入ってくるまで
+  CAT_RETURN_MIN: 8, CAT_RETURN_MAX: 16,             // 追い払ったあと戻るまで
+  CAT_SPEED: 3.4,
+  CAT_SENSE_DELAY: 7.0,      // ひとが来てからコソコソ逃げ出すまでの間（長めに居座る）
+  CAT_ACT_TIME: 0.8,         // 食べる/倒すのに要する時間
+  CAT_HOP_DUR: 0.45,         // 台へ跳び乗る所要時間
+  CAT_HOP_MAX: 2.6,          // 跳び乗れる高さ（ジャンプが得意）
+  CAT_BUMPS_NEEDED: 2,       // 体当たりで追い払うのに必要な回数（静かだが時間がかかる）
+  CAT_BUMP_CD: 0.55,
+  CAT_BARKS_NEEDED: 3,       // 吠えて追い払うのに必要な回数（速いが物音になる）
+  CAT_BARK_RANGE: 3.6,
+  BARK_COOLDOWN: 0.7,
   // アクション
   HIDE_TIME: 1.3,
-  CLOTH_PULL_TIME: 1.4,
-  TRASH_PUSH_TIME: 1.1,
-  CHAIR_TOPPLE_DIST: 1.4,
+  TRASH_PUSH_TIME: 0.16,
+  CHAIR_TOPPLE_DIST: 0.3,
+  FRIDGE_OPEN_TIME: 1.1,
   IDLE_ROLL_TIME: 3.5,
   SPILL_CHANCE: 0.55,
   MOUTH_DIRTY_TIME: 7.0,
-  QTE_PASS: 60
+  QTE_PASS: 60,
+  GAME_TIME: 180,       // 制限時間（秒）
+  MAX_CAUGHT: 3         // これだけバレたら終了
 };
 
 const ROOM = { minX:-11.5, maxX:11.5, minZ:-8.5, maxZ:8.5 };
@@ -343,12 +405,30 @@ counterTop.position.set(-10.2,1.05,-2); counterTop.castShadow = true; counterTop
 scene.add(counterTop);
 
 // 冷蔵庫
-addBox({ x:-10.3, z:6.6, w:2.4, d:2.6, h:2.4, mat:matSteel, top:2.40 });
+const fridgeF = addBox({ x:-10.3, z:6.6, w:2.4, d:2.6, h:2.4, mat:matSteel, top:2.40 });
 const fridgeLine = new THREE.Mesh(new THREE.BoxGeometry(0.06,2.2,0.06), matDark);
 fridgeLine.position.set(-9.05,1.3,6.6); scene.add(fridgeLine);
+// 冷蔵庫のドア（片側ヒンジで開く）
+const FRIDGE_FRONT_X = -9.1, FRIDGE_HINGE_Z = 6.6 - 1.28;
+const fridgeDoorPivot = new THREE.Group();
+fridgeDoorPivot.position.set(FRIDGE_FRONT_X, 0, FRIDGE_HINGE_Z);
+scene.add(fridgeDoorPivot);
+const fridgeDoor = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.15, 2.5), matSteel);
+fridgeDoor.position.set(0, 1.15, 1.25);
+fridgeDoor.castShadow = true;
+fridgeDoorPivot.add(fridgeDoor);
+const fridgeHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,0.5,8), matDark);
+fridgeHandle.rotation.z = Math.PI/2;
+fridgeHandle.position.set(0.09, 1.15, 2.2);
+fridgeDoorPivot.add(fridgeHandle);
+let fridgeOpen = 0, fridgeOpened = false, fridgeHoldT = 0;
+const fridgeMarker = new THREE.Mesh(new THREE.RingGeometry(0.4,0.5,20),
+  new THREE.MeshBasicMaterial({ color:0x8fd6ff, transparent:true, opacity:0.55, side:THREE.DoubleSide }));
+fridgeMarker.rotation.x = -Math.PI/2; fridgeMarker.position.set(FRIDGE_FRONT_X+0.5, 0.02, 6.6);
+scene.add(fridgeMarker);
 
-// 東 食器棚
-addBox({ x:10.4, z:1.5, w:2.2, d:8, h:1.9, mat:matWood, top:1.90 });
+// 東 食器棚（低めの台）
+addBox({ x:10.4, z:1.5, w:2.2, d:8, h:1.25, mat:matWood, top:1.25 });
 
 // 中央テーブル
 const TABLE = { x:1.2, z:0.5, top:1.03 };
@@ -356,6 +436,7 @@ addBox({ x:TABLE.x, z:TABLE.z, w:4.6, d:2.8, h:0.9, mat:matWood, top:1.03 });
 const tableTop = new THREE.Mesh(new THREE.BoxGeometry(5.0,0.16,3.2), matWood);
 tableTop.position.set(TABLE.x,0.95,TABLE.z); tableTop.castShadow = true; tableTop.receiveShadow = true;
 scene.add(tableTop);
+
 
 /* --- いす（動かせる・倒せる） --- */
 const chairs = [];
@@ -402,26 +483,6 @@ const trashF = reg({ minX:TRASH.x-0.66, maxX:TRASH.x+0.66, minZ:TRASH.z-0.66, ma
   top:1.26, blocks:false, noisy:true, kind:'trash', mesh:trashGroup, inner:trashInner,
   baseX:TRASH.x, baseZ:TRASH.z, wobble:0, hw:0.66, hd:0.66, push:0, toppled:false });
 
-/* --- テーブルクロス --- */
-const clothGroup = new THREE.Group();
-const clothMat = new THREE.MeshStandardMaterial({ color:0xe8e0f0, roughness:0.9, side:THREE.DoubleSide });
-const clothTop = new THREE.Mesh(new THREE.PlaneGeometry(5.4,3.6), clothMat);
-clothTop.rotation.x = -Math.PI/2; clothTop.position.y = 1.045; clothTop.receiveShadow = true;
-clothGroup.add(clothTop);
-[[0,1.8,0],[0,-1.8,Math.PI],[2.7,0,Math.PI/2],[-2.7,0,-Math.PI/2]].forEach(([ox,oz,ry])=>{
-  const side = new THREE.Mesh(new THREE.PlaneGeometry(Math.abs(ox)>0?3.6:5.4, 0.55), clothMat);
-  side.position.set(ox, 0.77, oz);
-  side.rotation.y = ry;
-  clothGroup.add(side);
-});
-clothGroup.position.set(TABLE.x, 0, TABLE.z);
-scene.add(clothGroup);
-const CLOTH_PULL = { x:TABLE.x-3.0, z:TABLE.z+2.2 };
-let clothPulled = false, clothPull = 0, clothAnim = 0;
-const clothMarker = new THREE.Mesh(new THREE.RingGeometry(0.4,0.5,20),
-  new THREE.MeshBasicMaterial({ color:0xb08ce8, transparent:true, opacity:0.6, side:THREE.DoubleSide }));
-clothMarker.rotation.x = -Math.PI/2; clothMarker.position.set(CLOTH_PULL.x, 0.02, CLOTH_PULL.z);
-scene.add(clothMarker);
 
 /* ============================================================
    5. いぬロボ（rig で姿勢制御）
@@ -493,14 +554,15 @@ const tailMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.045,0.55,8), d
 tailMesh.position.y = 0.28; tailPivot.add(tailMesh);
 const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.085,8,8), dogAcc);
 tailTip.position.y = 0.56; tailPivot.add(tailTip);
-tailPivot.position.set(0,0.72,-0.72); tailPivot.rotation.x = 0.55;
+tailPivot.position.set(0,0.72,-0.72); tailPivot.rotation.x = -0.55;
 rig.add(tailPivot);
 
 dog.position.set(0,0,5.5);
 let dogYaw = Math.PI;
 dog.rotation.y = dogYaw;
 scene.add(dog);
-const DOG_R = 0.5;
+// 頭が前に0.8ほど突き出ているので、当たり判定も体の実サイズに近づける（家具へのめり込み防止）
+const DOG_R = 0.72;
 
 /* ============================================================
    6. 飼い主
@@ -540,6 +602,92 @@ let ownerYaw = 0;
 const OWNER_R = 0.45;
 
 /* ============================================================
+   6b. おじゃまネコ
+   丸っこい見た目。勝手に食べたり倒したりする。やったことは全部いぬのせい。
+   ひとが来るとピンときて、少ししてからコソコソ逃げる。ジャンプが得意。
+   ============================================================ */
+const cat = new THREE.Group();
+const catRig = new THREE.Group();
+cat.add(catRig);
+const catFur  = new THREE.MeshStandardMaterial({ color:0x8c8f98, roughness:0.85 });
+const catBelly= new THREE.MeshStandardMaterial({ color:0xe6e2da, roughness:0.9 });
+const catDark = new THREE.MeshStandardMaterial({ color:0x35322f, roughness:0.7 });
+
+// まるい体
+const catBody = new THREE.Mesh(new THREE.SphereGeometry(0.46,16,14), catFur);
+catBody.scale.set(1.0,0.86,1.18);
+catBody.position.y = 0.44; catBody.castShadow = true; catRig.add(catBody);
+const catBellyM = new THREE.Mesh(new THREE.SphereGeometry(0.33,12,10), catBelly);
+catBellyM.scale.set(1.0,0.7,1.1);
+catBellyM.position.set(0,0.30,0.10); catRig.add(catBellyM);
+
+// まるい頭
+const catHead = new THREE.Group();
+catHead.position.set(0,0.78,0.34); catRig.add(catHead);
+const catHeadM = new THREE.Mesh(new THREE.SphereGeometry(0.30,16,14), catFur);
+catHeadM.scale.set(1.05,0.95,0.95); catHeadM.castShadow = true; catHead.add(catHeadM);
+const catMuzzle = new THREE.Mesh(new THREE.SphereGeometry(0.15,12,10), catBelly);
+catMuzzle.scale.set(1.1,0.72,0.8); catMuzzle.position.set(0,-0.09,0.22); catHead.add(catMuzzle);
+const catNose = new THREE.Mesh(new THREE.ConeGeometry(0.045,0.05,6), new THREE.MeshStandardMaterial({color:0xe89aa8}));
+catNose.rotation.x = Math.PI/2; catNose.position.set(0,-0.05,0.33); catHead.add(catNose);
+const catEars = [];
+[-0.16,0.16].forEach((x,i)=>{
+  const p = new THREE.Group(); p.position.set(x,0.22,0.02);
+  const e = new THREE.Mesh(new THREE.ConeGeometry(0.11,0.20,4), catFur);
+  e.position.y = 0.10; e.castShadow = true; p.add(e);
+  catHead.add(p); catEars.push({ pivot:p, side:(i===0?-1:1) });
+});
+const catEyes = [];
+[-0.13,0.13].forEach(x=>{
+  const e = new THREE.Mesh(new THREE.SphereGeometry(0.055,10,10),
+    new THREE.MeshStandardMaterial({color:0x9fd86a, emissive:0x2a4a18}));
+  e.position.set(x,0.03,0.245); catHead.add(e); catEyes.push(e);
+  const p = new THREE.Mesh(new THREE.BoxGeometry(0.012,0.07,0.01), catDark);
+  p.position.set(x,0.03,0.30); catHead.add(p);
+});
+// みじかい脚
+const catLegs = [];
+[[-0.24,-0.28],[0.24,-0.28],[-0.24,0.28],[0.24,0.28]].forEach(([x,z])=>{
+  const l = new THREE.Group();
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.10,0.26,8), catFur);
+  m.position.y = -0.13; m.castShadow = true; l.add(m);
+  l.position.set(x,0.22,z); catRig.add(l); catLegs.push(l);
+});
+// しっぽ（後ろへ）
+const catTail = new THREE.Group();
+const catTailM = new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.035,0.62,8), catFur);
+catTailM.position.y = 0.31; catTail.add(catTailM);
+const catTailTip = new THREE.Mesh(new THREE.SphereGeometry(0.055,8,8), catBelly);
+catTailTip.position.y = 0.62; catTail.add(catTailTip);
+catTail.position.set(0,0.50,-0.46); catTail.rotation.x = -0.9;
+catRig.add(catTail);
+
+cat.position.set(DOOR.x, 0, DOOR.z-2);
+cat.visible = false;
+scene.add(cat);
+const CAT_R = 0.42;
+let catYaw = 0;
+
+const CAT = {
+  state:'GONE',        // GONE / ENTER / ROAM / ACT / FLEE / IDLE
+  timer: 0,            // GONE中の再登場までの待ち
+  target:null, targetKind:null,
+  hop:null,            // ジャンプ中の弧
+  senseTimer:0, alerted:false,
+  bumpCount:0, bumpCD:0, barkCount:0,
+  actTimer:0, ate:0, wrecked:0,
+  hopCD:0, wanderSpot:null, wanderTimer:0, sniffTimer:0,
+  idleSpot:null, idleAction:0, idleActionTimer:0
+};
+
+// することがなくなったら向かう「お気に入りの場所」（窓辺・高いところなど）
+const CAT_IDLE_SPOTS = [
+  { x:-9.6, z:6.0, y:2.40, label:'まどべ' },   // 冷蔵庫の上
+  { x:10.4, z:1.5, y:1.25, label:'たなの うえ' }, // 東の台
+  { x:-9.5, z:-2, y:1.11, label:'まどべ' },     // 西カウンター
+];
+
+/* ============================================================
    7. たべもの（高さつき）
    ============================================================ */
 const FOOD_DEFS = [
@@ -548,16 +696,16 @@ const FOOD_DEFS = [
   { name:'からあげ',    type:'SAFE',  score:20, color:0xd9922f, x:5.2,  z:-5.2, y:0.28 },
   { name:'たまねぎ',    type:'TOXIC', score:-10,color:0xe0d0a8, x:-3.5, z:-6.8, y:0.28 },
   { name:'なまクリーム',type:'RISKY', score:14, color:0xfaf3e0, x:-8.3, z:6.4,  y:0.28 },
-  // テーブルの上（クロスを引くと落ちる）
-  { name:'パン',        type:'SAFE',  score:15, color:0xd8a24a, x:0.0,  z:1.3,  y:1.24, onTable:true },
-  { name:'ケーキ',      type:'RISKY', score:22, color:0xf5c9d8, x:2.4,  z:-0.2, y:1.24, onTable:true },
-  { name:'チョコレート',type:'TOXIC', score:-18,color:0x5a3520, x:1.2,  z:1.1,  y:1.22, onTable:true },
+  // テーブルの上
+  { name:'パン',        type:'SAFE',  score:15, color:0xd8a24a, x:0.0,  z:1.3,  y:1.24 },
+  { name:'ケーキ',      type:'RISKY', score:22, color:0xf5c9d8, x:2.4,  z:-0.2, y:1.24 },
+  { name:'チョコレート',type:'TOXIC', score:-18,color:0x5a3520, x:1.2,  z:1.1,  y:1.22 },
   // カウンターの上
   { name:'ソーセージ',  type:'SAFE',  score:18, color:0xc4593f, x:-10.2,z:-5.0, y:1.32 },
   { name:'おさしみ',    type:'SAFE',  score:28, color:0xef8f8a, x:-10.2,z:1.2,  y:1.32 },
-  // 食器棚の上
-  { name:'クッキー',    type:'SAFE',  score:25, color:0xd8b070, x:10.4, z:2.6,  y:2.10 },
-  { name:'チーズ',      type:'RISKY', score:16, color:0xf0d24a, x:10.4, z:-0.6, y:2.10 }
+  // 食器棚の上（低めの台）
+  { name:'クッキー',    type:'SAFE',  score:25, color:0xd8b070, x:10.4, z:2.6,  y:1.45 },
+  { name:'チーズ',      type:'RISKY', score:16, color:0xf0d24a, x:10.4, z:-0.6, y:1.45 }
 ];
 
 const foods = [];
@@ -578,22 +726,78 @@ function makeFood(def){
   halo.rotation.x = -Math.PI/2; halo.position.y = -0.18; g.add(halo);
   g.position.set(def.x, def.y, def.z);
   scene.add(g);
-  const f = { def:{...def}, group:g, mesh:m, halo, eaten:false,
+  const f = { def:{...def}, group:g, mesh:m, halo, eaten:false, locked:false,
               baseY:def.y, x:def.x, z:def.z, y:def.y, falling:false, vy:0 };
   foods.push(f);
   return f;
 }
 FOOD_DEFS.forEach(makeFood);
+
+// 冷蔵庫の中身（ドアを開けるまで隠れている）
+const FRIDGE_FOOD_DEFS = [
+  { name:'ぎゅうにゅう', type:'SAFE',  score:16, color:0xf5f5f0, x:-9.6, z:6.0, y:0.85 },
+  { name:'プリン',       type:'RISKY', score:20, color:0xf0c86a, x:-9.6, z:7.1, y:0.85 }
+];
+const fridgeFoods = FRIDGE_FOOD_DEFS.map(def => {
+  const f = makeFood(def);
+  f.locked = true;
+  f.group.visible = false;
+  return f;
+});
 document.getElementById('total').textContent = foods.length;
+
 
 /* ============================================================
    8. 証拠
    ============================================================ */
 const evidences = [];
 const evGeo = new THREE.SphereGeometry(0.09,6,6);
+// 床に置かれる物（食べこぼし・落下した食べ物）が、椅子とテーブルの隙間など
+// いぬが物理的に近づけない場所に入ってしまうと永久に取れなくなる。
+// 届く場所へ寄せてから配置する。
+function nudgeToReachable(x, z){
+  const PICK = 1.15;   // 取得判定より少し内側で安全を見る
+  const canStandNear = (fx,fz) => {
+    for (let a=0; a<24; a++){
+      for (let r=0.3; r<=PICK; r+=0.15){
+        const ang = a/24*Math.PI*2;
+        const px = fx+Math.cos(ang)*r, pz = fz+Math.sin(ang)*r;
+        if (px<ROOM.minX+0.4||px>ROOM.maxX-0.4||pz<ROOM.minZ+0.4||pz>ROOM.maxZ-0.4) continue;
+        let blocked = false;
+        for (const f of furniture){
+          if (f.toppled || f.top <= 0.05) continue;
+          const cx = Math.max(f.minX, Math.min(px, f.maxX));
+          const cz = Math.max(f.minZ, Math.min(pz, f.maxZ));
+          if (Math.hypot(px-cx, pz-cz) < DOG_R){ blocked = true; break; }
+        }
+        if (!blocked) return true;
+      }
+    }
+    return false;
+  };
+  if (canStandNear(x,z)) return { x, z };
+  // 届かないので、周囲を少しずつ広げながら届く場所を探す
+  for (let r=0.6; r<=4.0; r+=0.4){
+    for (let a=0; a<16; a++){
+      const ang = a/16*Math.PI*2 + Math.random();
+      const nx = THREE.MathUtils.clamp(x+Math.cos(ang)*r, ROOM.minX+0.6, ROOM.maxX-0.6);
+      const nz = THREE.MathUtils.clamp(z+Math.sin(ang)*r, ROOM.minZ+0.6, ROOM.maxZ-0.6);
+      let insideFurn = false;
+      for (const f of furniture){
+        if (f.toppled || f.top <= 0.05) continue;
+        if (nx>f.minX && nx<f.maxX && nz>f.minZ && nz<f.maxZ){ insideFurn = true; break; }
+      }
+      if (!insideFurn && canStandNear(nx,nz)) return { x:nx, z:nz };
+    }
+  }
+  return { x, z };
+}
+
 function spawnEvidence(x,z,color){
   x = THREE.MathUtils.clamp(x, ROOM.minX+0.5, ROOM.maxX-0.5);
   z = THREE.MathUtils.clamp(z, ROOM.minZ+0.5, ROOM.maxZ-0.5);
+  const nudged = nudgeToReachable(x, z);
+  x = nudged.x; z = nudged.z;
   const g = new THREE.Group();
   for (let i=0;i<4;i++){
     const m = new THREE.Mesh(evGeo, new THREE.MeshStandardMaterial({color, roughness:0.8}));
@@ -640,9 +844,9 @@ function noiseBurst(dur=0.25,gain=0.3,freq=1400){
 const SFX = {
   chew(){ tone(220,0.09,'square',0.09); setTimeout(()=>tone(180,0.09,'square',0.08),90); },
   bad(){ tone(160,0.3,'sawtooth',0.12,70); },
-  clatter(){ noiseBurst(0.4,0.35,2200); tone(520,0.18,'triangle',0.12,240); },
-  crash(){ noiseBurst(0.75,0.5,1600); tone(300,0.5,'sawtooth',0.16,90);
-           setTimeout(()=>noiseBurst(0.5,0.35,3000),140); },
+  clatter(){ noiseBurst(0.45,0.32,420); tone(140,0.26,'triangle',0.16,70); },
+  crash(){ noiseBurst(0.85,0.5,260); tone(110,0.65,'sawtooth',0.2,45);
+           setTimeout(()=>noiseBurst(0.55,0.32,340),150); },
   drag(){ noiseBurst(0.3,0.16,700); },
   step(){ noiseBurst(0.09,0.10,380); },
   land(){ noiseBurst(0.12,0.14,300); },
@@ -653,7 +857,8 @@ const SFX = {
   miss(){ tone(200,0.18,'sawtooth',0.10,120); },
   safe(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,0.2,'sine',0.13), i*110)); },
   scold(){ [400,340,290].forEach((f,i)=>setTimeout(()=>tone(f,0.24,'square',0.11), i*160)); },
-  tummy(){ tone(90,0.7,'sine',0.16,55); }
+  tummy(){ tone(90,0.7,'sine',0.16,55); },
+  bark(){ tone(340,0.13,'square',0.16,180); setTimeout(()=>tone(260,0.16,'square',0.13,120),110); }
 };
 
 /* ============================================================
@@ -684,6 +889,7 @@ addEventListener('pointercancel', e=>{ if(e.pointerId===joyId) resetJoy(); });
 let jumpHeld = false, jumpPid = null;
 const jumpBtn = document.getElementById('jump-btn');
 const jumpChargeEl = document.getElementById('jump-charge');
+const jumpLabelEl = document.getElementById('jump-label');
 jumpBtn.addEventListener('pointerdown', e=>{
   e.preventDefault(); jumpPid = e.pointerId; jumpHeld = true;
   jumpBtn.style.transform = 'scale(0.9)';
@@ -695,16 +901,31 @@ function releaseJump(e){
 addEventListener('pointerup', releaseJump);
 addEventListener('pointercancel', releaseJump);
 
+// ワン！ボタン
+const barkBtn = document.getElementById('bark-btn');
+barkBtn.addEventListener('pointerdown', e=>{
+  e.preventDefault();
+  barkBtn.style.transform = 'scale(0.9)';
+  bark();
+});
+function releaseBark(){ barkBtn.style.transform = 'scale(1)'; }
+addEventListener('pointerup', releaseBark);
+addEventListener('pointercancel', releaseBark);
+addEventListener('keydown', e=>{ if (e.code==='KeyB') bark(); });
+
 /* ============================================================
    11. 状態
    ============================================================ */
 const G = {
   state:'NORMAL', alertGauge:0, score:0, eaten:0, riskGauge:0, mouthDirty:0,
   normalTimer:0, ownerStayTimer:0, ownerWaitTimer:0, ownerTarget:new THREE.Vector3(),
-  ownerLeaving:false, ownerScan:0, noiseCooldown:0,
+  ownerLeaving:false, ownerScan:0, noiseCooldown:0, messTarget:null,
+  suspicious:false, suspicionTimer:0, lastDt:0.016,
   earPhase:0, earTwitch:0, earTwitchTimer:0, earDir:0,
   chew:0, idleTimer:0, rolling:false,
   vy:0, onGround:true, groundY:0, jumpActive:false, jumpHold:0,
+  climbing:false, climbTarget:null, climbHoldTimer:0,
+  gameTime:0, caughtCount:0, ended:false,
   frames:0, elapsed:0, started:false
 };
 function rand(a,b){ return a + Math.random()*(b-a); }
@@ -799,7 +1020,7 @@ function toppleChair(f){
 
 function pushTrash(nx,nz){
   if (trashF.toppled) return;
-  trashF.push += 0.016;
+  trashF.push += G.lastDt || 0.016;
   trashF.inner.rotation.z = THREE.MathUtils.clamp(-nx,-1,1) * trashF.push * 0.5;
   trashF.inner.rotation.x = THREE.MathUtils.clamp(nz,-1,1) * trashF.push * 0.5;
   if (trashF.push >= P.TRASH_PUSH_TIME) topplTrash(nx,nz);
@@ -820,7 +1041,8 @@ function topplTrash(nx,nz){
   ];
   spoils.forEach((s,i)=>{
     const a = (i/spoils.length)*Math.PI*2 + Math.random();
-    makeFood({ ...s, x:trashF.baseX+Math.cos(a)*1.1, z:trashF.baseZ+Math.sin(a)*1.1, y:0.28 });
+    const nf = makeFood({ ...s, x:trashF.baseX+Math.cos(a)*1.4, z:trashF.baseZ+Math.sin(a)*1.4, y:0.28 });
+    nudgeFoodReachable(nf);
   });
   for (let i=0;i<3;i++) spawnEvidence(trashF.baseX+rand(-1.3,1.3), trashF.baseZ+rand(-1.3,1.3), 0x8a8064);
   document.getElementById('total').textContent = foods.length;
@@ -853,21 +1075,47 @@ function pickOwnerTarget(){
   for (let i=0;i<40;i++){
     const x = rand(ROOM.minX+1, ROOM.maxX-1);
     const z = rand(ROOM.minZ+1, ROOM.maxZ-1);
+    // ドアのすぐ近くだと「入った直後にほぼ動かず立ち止まる」ように見えるので除外
+    if (Math.hypot(x-DOOR.x, z-DOOR.z) < 3.0) continue;
     let ok = true;
     for (const f of furniture){
-      if (f.top < 0.7) continue;
-      if (x>f.minX-0.8 && x<f.maxX+0.8 && z>f.minZ-0.8 && z<f.maxZ+0.8){ ok=false; break; }
+      if (f.toppled || f.top < 0.25) continue;   // 椅子(0.56)も除外対象に含める
+      if (x>f.minX-0.85 && x<f.maxX+0.85 && z>f.minZ-0.85 && z<f.maxZ+0.85){ ok=false; break; }
     }
     if (ok){ G.ownerTarget.set(x,0,z); return; }
   }
   G.ownerTarget.set(0,0,0);
 }
 // 物音・不審の発生地点へ寄る
+// 目的地が家具の中だと、飼い主はそこへ到達できず手前で永久に足踏みしてしまう。
+// 家具に重なっていたら、最寄りの立てる場所へずらす。
+function nudgeToWalkable(x, z){
+  for (let attempt=0; attempt<12; attempt++){
+    let hit = null;
+    for (const f of furniture){
+      if (f.toppled || f.top < 0.25) continue;   // 低すぎるものは跨げるので無視
+      if (x>f.minX-0.85 && x<f.maxX+0.85 && z>f.minZ-0.85 && z<f.maxZ+0.85){ hit = f; break; }
+    }
+    if (!hit) break;
+    // 家具の中心から外向きに押し出す
+    const cxm = (hit.minX+hit.maxX)/2, czm = (hit.minZ+hit.maxZ)/2;
+    let vx = x-cxm, vz = z-czm;
+    const vl = Math.hypot(vx,vz) || 1;
+    vx/=vl; vz/=vl;
+    const need = Math.max(hit.maxX-hit.minX, hit.maxZ-hit.minZ)/2 + 1.0;
+    x = cxm + vx*need;
+    z = czm + vz*need;
+  }
+  return {
+    x: THREE.MathUtils.clamp(x, ROOM.minX+1, ROOM.maxX-1),
+    z: THREE.MathUtils.clamp(z, ROOM.minZ+1, ROOM.maxZ-1)
+  };
+}
+
 function investigate(x,z){
   if (G.state !== 'ALERT' || G.ownerLeaving) return;
-  G.ownerTarget.set(
-    THREE.MathUtils.clamp(x+rand(-1,1), ROOM.minX+1, ROOM.maxX-1), 0,
-    THREE.MathUtils.clamp(z+rand(-1,1), ROOM.minZ+1, ROOM.maxZ-1));
+  const p = nudgeToWalkable(x+rand(-1,1), z+rand(-1,1));
+  G.ownerTarget.set(p.x, 0, p.z);
   G.ownerWaitTimer = 0;
 }
 
@@ -902,6 +1150,7 @@ function setState(s){
     owner.visible = false;
     owner.position.set(DOOR.x,0,DOOR.z-2);
     G.ownerLeaving = false;
+    G.suspicious = false; G.suspicionTimer = 0;
   } else if (s === 'ALERT'){
     owner.visible = true;
     owner.position.set(DOOR.x,0,DOOR.z);
@@ -912,7 +1161,14 @@ function setState(s){
     pickOwnerTarget();
     showMsg('だれか きた…！ 👣', 1200);
   } else if (s === 'CAUGHT'){
-    startQTE();
+    G.caughtCount++;
+    updateHUD();
+    if (G.caughtCount >= P.MAX_CAUGHT){
+      startQTE();     // 最後の1回はQTEをやらせてから終了演出へ
+      G.pendingEnd = 'caught';
+    } else {
+      startQTE();
+    }
   }
 }
 
@@ -925,13 +1181,25 @@ function updateOwner(dt){
   if (G.state !== 'ALERT') return;
 
   G.ownerStayTimer -= dt;
-  if (G.ownerStayTimer <= 0 && !G.ownerLeaving && G.alertGauge < 35){
+  if (G.ownerStayTimer <= 0 && !G.ownerLeaving && G.alertGauge < 35 && !G.suspicious){
     G.ownerLeaving = true;
     G.ownerTarget.set(DOOR.x,0,DOOR.z-1.0);
   }
 
+  // 証拠を見つけたあとは、しつこく犬を探しに来る
+  if (G.suspicious){
+    G.suspicionTimer -= dt;
+    if (G.suspicionTimer <= 0){ G.suspicious = false; }
+    else if (!G.ownerLeaving){
+      G.ownerChaseTick = (G.ownerChaseTick||0) - dt;
+      if (G.ownerChaseTick <= 0){
+        G.ownerChaseTick = P.SUSPICION_RETARGET;
+        investigate(dog.position.x, dog.position.z);
+      }
+    }
+  }
   // 疑いが強いと犬の方へ寄ってくる
-  if (!G.ownerLeaving && G.alertGauge > P.SUSPICION_CHASE){
+  else if (!G.ownerLeaving && G.alertGauge > P.SUSPICION_CHASE){
     G.ownerChaseTick = (G.ownerChaseTick||0) - dt;
     if (G.ownerChaseTick <= 0){
       G.ownerChaseTick = 1.6;
@@ -954,8 +1222,9 @@ function updateOwner(dt){
     }
   } else {
     const nx=dx/dist, nz=dz/dist;
-    owner.position.x += nx*P.OWNER_SPEED*dt;
-    owner.position.z += nz*P.OWNER_SPEED*dt;
+    const spd = P.OWNER_SPEED * (G.suspicious ? 1.35 : 1);
+    owner.position.x += nx*spd*dt;
+    owner.position.z += nz*spd*dt;
     ownerYaw += angleDiff(Math.atan2(nx,nz), ownerYaw) * Math.min(1, 5*dt);
     const ph = G.elapsed*8;
     oLegs[0].rotation.x = Math.sin(ph)*0.55;
@@ -970,32 +1239,477 @@ function updateOwner(dt){
     owner.position.x = THREE.MathUtils.clamp(owner.position.x, ROOM.minX+0.6, ROOM.maxX-0.6);
     owner.position.z = THREE.MathUtils.clamp(owner.position.z, ROOM.minZ+0.6, ROOM.maxZ-0.6);
     resolveSolids(owner.position, OWNER_R+0.35, 0, false);
+    owner.position.x = THREE.MathUtils.clamp(owner.position.x, ROOM.minX+0.6, ROOM.maxX-0.6);
+    owner.position.z = THREE.MathUtils.clamp(owner.position.z, ROOM.minZ+0.6, ROOM.maxZ-0.6);
+    // 家具に阻まれてまったく進めていないなら、その目的地は諦めて選び直す
+    // （立ち止まって見回している最中は対象外）
+    if (G.ownerPrev && dist >= 0.45){
+      const moved = Math.hypot(owner.position.x-G.ownerPrev.x, owner.position.z-G.ownerPrev.z);
+      if (moved < P.OWNER_SPEED*dt*0.25){
+        G.ownerStuck = (G.ownerStuck||0) + dt;
+        if (G.ownerStuck > 0.35){
+          G.ownerStuck = 0;
+          if (!G.ownerLeaving) pickOwnerTarget();
+        }
+      } else {
+        G.ownerStuck = 0;
+      }
+    }
+    G.ownerPrev = { x:owner.position.x, z:owner.position.z };
   }
 
-  // --- 警戒度 ---
-  const ddist = Math.hypot(dog.position.x-owner.position.x, dog.position.z-owner.position.z);
-  const high = dog.position.y > 0.8;
-  const occ = !high && isOccluded(owner.position.x, owner.position.z, dog.position.x, dog.position.z);
+  // --- 警戒度：距離による自然察知は廃止。物音（investigate経由）と現場発見だけで動く ---
+  if (G.alertGauge > 0) G.alertGauge = Math.max(0, G.alertGauge - P.ALERT_DECAY*dt);
 
-  let rise = 0;
-  if (ddist < P.DETECT_RANGE){
-    rise = ((P.DETECT_RANGE-ddist)/P.DETECT_RANGE) * P.ALERT_RISE_MAX;
-    if (occ) rise *= P.OCCLUSION_FACTOR;
-    if (high) rise *= P.HIGH_GROUND_MUL;
-  }
-  for (const ev of evidences){
-    if (inOwnerView(ev.x, ev.z)){ rise += P.EVIDENCE_SEEN_RISE; break; }
-  }
-  if (trashF.toppled && inOwnerView(trashF.baseX, trashF.baseZ)) rise += 12;
-  if (clothPulled && inOwnerView(TABLE.x, TABLE.z)) rise += 12;
-
-  if (rise > 0) G.alertGauge = Math.min(P.ALERT_MAX, G.alertGauge + rise*dt);
-  else          G.alertGauge = Math.max(0, G.alertGauge - P.ALERT_DECAY*dt);
+  updateMessInspection(dt);
 
   if (G.alertGauge >= P.ALERT_MAX){ setState('CAUGHT'); return; }
   if (inOwnerView(dog.position.x, dog.position.z, dog.position.y)){ setState('CAUGHT'); return; }
 }
 
+// 散らかり（証拠・倒れたいす・倒れたゴミ箱）を飼い主が視認したら、そこへ向かい
+// 現場に着いたとき犬が近くにいれば現行犯、いなければ黙って片付けてしまう
+function updateMessInspection(dt){
+  if (G.ownerLeaving) return;
+  // 犬を追いかけている最中は、片付けよりも犯人捜しを優先する
+  if (G.suspicious) return;
+  let target = null, td = 99;
+  const consider = (x,z,kind,ref) => {
+    if (!inOwnerView(x,z)) return;
+    const d = Math.hypot(owner.position.x-x, owner.position.z-z);
+    if (d < td){ td = d; target = { kind, ref, x, z }; }
+  };
+  evidences.forEach(ev => consider(ev.x, ev.z, 'evidence', ev));
+  chairs.forEach(c => { if (c.toppled) consider(c.baseX, c.baseZ, 'chair', c); });
+  if (trashF.toppled) consider(trashF.baseX, trashF.baseZ, 'trash', trashF);
+
+  if (!target){ G.messTarget = null; return; }
+  G.messTarget = target;
+  G.ownerTarget.set(target.x, 0, target.z);
+  G.ownerWaitTimer = Math.min(G.ownerWaitTimer, 0.3);
+
+  const d = Math.hypot(owner.position.x-target.x, owner.position.z-target.z);
+  if (d < P.MESS_INSPECT_DIST) resolveMess(target);
+}
+
+function resolveMess(target){
+  const dogNear = Math.hypot(dog.position.x-owner.position.x, dog.position.z-owner.position.z) < P.MESS_CATCH_DIST;
+  if (dogNear){
+    setState('CAUGHT');
+    return;
+  }
+  // 不具合に気づいて直す
+  let what = 'たべこぼし';
+  if (target.kind === 'evidence'){
+    scene.remove(target.ref.group);
+    const i = evidences.indexOf(target.ref);
+    if (i>=0) evidences.splice(i,1);
+  } else if (target.kind === 'chair'){
+    restoreChair(target.ref);
+    what = 'たおれた いす';
+  } else if (target.kind === 'trash'){
+    restoreTrash();
+    what = 'ひっくりかえった ゴミばこ';
+  }
+  G.messTarget = null;
+  // 直したあと「犯人はどこだ」と犬を探しに来る
+  G.suspicious = true;
+  G.suspicionTimer = P.SUSPICION_TIME;
+  G.alertGauge = Math.min(P.ALERT_MAX, G.alertGauge + 20);
+  investigate(dog.position.x, dog.position.z);
+  showMsg(`${what} を みつかった…！ こっちに くる！ 😰`, 1900);
+}
+
+function restoreChair(f){
+  f.toppled = false;
+  f.top = 0.56;
+  f.inner.rotation.set(0,0,0);
+  f.inner.position.y = 0;
+  f.slide = 0;
+}
+function restoreTrash(){
+  trashF.toppled = false;
+  trashF.top = 1.26;
+  trashF.inner.rotation.set(0,0,0);
+  trashF.inner.position.y = 0;
+  trashF.push = 0;
+}
+
+/* ============================================================
+   13b. おじゃまネコのAI
+   ============================================================ */
+function catGroundAt(x,z,y){ return groundHeightAt(x,z,y); }
+
+// 食べ物 or 倒せる家具のうち、いちばん近いものを次の目標にする
+function pickCatTarget(){
+  let best=null, kind=null, bd=1e9;
+  foods.forEach(f=>{
+    if (f.eaten || f.locked) return;
+    const d = Math.hypot(cat.position.x-f.x, cat.position.z-f.z) + (f.y>0.6 ? -1.5 : 0); // 高い所ほど好む
+    if (d < bd){ bd=d; best=f; kind='food'; }
+  });
+  const wreckables = [...chairs, trashF].filter(f=>!f.toppled);
+  wreckables.forEach(f=>{
+    const d = Math.hypot(cat.position.x-f.baseX, cat.position.z-f.baseZ) + 2.5; // 食べ物よりは優先度低め
+    if (d < bd){ bd=d; best=f; kind='wreck'; }
+  });
+  CAT.target = best; CAT.targetKind = kind;
+  // 気まぐれ：半分くらいは目標へ直行せず、まず適当な場所をうろつく
+  if (best && Math.random() < 0.5){
+    for (let i=0;i<20;i++){
+      const x = rand(ROOM.minX+1.2, ROOM.maxX-1.2);
+      const z = rand(ROOM.minZ+1.2, ROOM.maxZ-1.2);
+      let ok = true;
+      for (const f of furniture){
+        if (f.top < 0.5) continue;
+        if (x>f.minX-0.7 && x<f.maxX+0.7 && z>f.minZ-0.7 && z<f.maxZ+0.7){ ok=false; break; }
+      }
+      if (ok){
+        CAT.wanderSpot = { x, z };
+        CAT.wanderTimer = rand(2.5, 5.0);
+        break;
+      }
+    }
+  }
+  if (!best && CAT.state === 'ROAM'){
+    CAT.state = 'IDLE';
+    CAT.idleSpot = CAT_IDLE_SPOTS[Math.floor(Math.random()*CAT_IDLE_SPOTS.length)];
+    CAT.idleAction = 0; CAT.idleActionTimer = rand(2.5, 4.5);
+  }
+}
+
+function catTargetPos(){
+  if (!CAT.target) return null;
+  if (CAT.targetKind === 'food') return { x:CAT.target.x, z:CAT.target.z, y:CAT.target.y-0.2 };
+  return { x:CAT.target.baseX, z:CAT.target.baseZ, y:0 };
+}
+
+function startCatHop(tx,tz,ty){
+  CAT.hop = { fx:cat.position.x, fz:cat.position.z, fy:cat.position.y,
+              tx, tz, ty, t:0, dur:P.CAT_HOP_DUR,
+              h:Math.max(0.7, (ty-cat.position.y)*0.6+0.7) };
+}
+
+function catFlee(reason){
+  if (CAT.state === 'FLEE' || CAT.state === 'GONE') return;
+  CAT.state = 'FLEE';
+  CAT.target = null; CAT.hop = null;
+  if (reason) showMsg(reason, 1400);
+}
+
+function catEnter(){
+  CAT.state = 'ENTER';
+  CAT.bumpCount = 0; CAT.barkCount = 0;
+  CAT.senseTimer = 0; CAT.alerted = false;
+  cat.visible = true;
+  cat.position.set(DOOR.x + rand(-0.6,0.6), 0, DOOR.z+0.4);
+  catYaw = 0;
+  showMsg('ネコが しのびこんできた… 🐈', 1600);
+}
+
+function updateCat(dt){
+  // 見た目のゆらぎ（しっぽ・耳）
+  catTail.rotation.z = Math.sin(G.elapsed*3.4)*0.35;
+  catEars.forEach(e=>{ e.pivot.rotation.z = e.side*0.1 + (CAT.alerted ? e.side*0.28 : 0); });
+
+  if (CAT.state === 'GONE'){
+    cat.visible = false;
+    CAT.timer -= dt;
+    if (CAT.timer <= 0) catEnter();
+    return;
+  }
+
+  // --- ひとが来たらピンとくる → 少ししてからコソコソ逃げる ---
+  if (G.state === 'ALERT' && CAT.state !== 'FLEE'){
+    if (!CAT.alerted){ CAT.alerted = true; CAT.senseTimer = 0; }
+    CAT.senseTimer += dt;
+    if (CAT.senseTimer >= P.CAT_SENSE_DELAY) catFleeQuiet();
+  } else if (G.state !== 'ALERT'){
+    CAT.alerted = false;
+  }
+
+  // --- いぬの体当たり判定（静かな追い払い） ---
+  if (CAT.bumpCD > 0) CAT.bumpCD -= dt;
+  const dd = Math.hypot(dog.position.x-cat.position.x, dog.position.z-cat.position.z);
+  const dv = Math.abs(dog.position.y - cat.position.y);
+  if (dd < DOG_R+CAT_R+0.12 && dv < 0.8 && CAT.bumpCD <= 0 && CAT.state !== 'FLEE'){
+    CAT.bumpCD = P.CAT_BUMP_CD;
+    CAT.bumpCount++;
+    const nx = (cat.position.x-dog.position.x)/(dd||1), nz = (cat.position.z-dog.position.z)/(dd||1);
+    cat.position.x += nx*0.5; cat.position.z += nz*0.5;
+    CAT.hop = null;
+    SFX.tap();
+    if (CAT.bumpCount >= P.CAT_BUMPS_NEEDED) catFlee('ネコを おいはらった！ 🐈‍⬛');
+    else showMsg(`ぐいっ！（あと ${P.CAT_BUMPS_NEEDED-CAT.bumpCount}かい）`, 700);
+  }
+
+  // --- 移動 ---
+  if (CAT.state === 'FLEE'){
+    const tx = DOOR.x, tz = DOOR.z+0.2;
+    const dx = tx-cat.position.x, dz = tz-cat.position.z;
+    const d = Math.hypot(dx,dz);
+    if (CAT.hop) { stepCatHop(dt); }
+    else if (d < 0.5){
+      CAT.state = 'GONE';
+      CAT.timer = rand(P.CAT_RETURN_MIN, P.CAT_RETURN_MAX);
+      cat.visible = false;
+      return;
+    } else {
+      const sp = P.CAT_SPEED*1.15;   // 逃げ足は速い
+      cat.position.x += dx/d*sp*dt;
+      cat.position.z += dz/d*sp*dt;
+      catYaw += angleDiff(Math.atan2(dx/d,dz/d), catYaw)*Math.min(1,7*dt);
+      // 台の上にいたら降りる
+      const gy = catGroundAt(cat.position.x, cat.position.z, cat.position.y);
+      cat.position.y += (gy-cat.position.y)*Math.min(1,6*dt);
+    }
+    applyCatVisual(dt, true);
+    return;
+  }
+
+  if (CAT.state === 'ENTER'){
+    if (cat.position.z < ROOM.minZ+1.2){
+      cat.position.z += P.CAT_SPEED*dt;
+    } else {
+      CAT.state = 'ROAM'; pickCatTarget();
+    }
+    applyCatVisual(dt, true);
+    return;
+  }
+
+  if (CAT.state === 'ACT'){
+    CAT.actTimer -= dt;
+    if (CAT.actTimer <= 0){ CAT.state = 'ROAM'; pickCatTarget(); }
+    applyCatVisual(dt, false);
+    return;
+  }
+
+  if (CAT.state === 'IDLE'){
+    if (CAT.hop){ stepCatHop(dt); applyCatVisual(dt, true); return; }
+    const sp = CAT.idleSpot;
+    const dx = sp.x-cat.position.x, dz = sp.z-cat.position.z;
+    const hd = Math.hypot(dx,dz);
+    const vd = sp.y-cat.position.y;
+    if (vd > 0.3 && hd < 1.6){ startCatHop(sp.x, sp.z, sp.y); applyCatVisual(dt,true); return; }
+    if (hd > 0.4){
+      const nx=dx/hd, nz=dz/hd;
+      cat.position.x += nx*P.CAT_SPEED*0.7*dt;
+      cat.position.z += nz*P.CAT_SPEED*0.7*dt;
+      catYaw += angleDiff(Math.atan2(nx,nz), catYaw)*Math.min(1,7*dt);
+      const gy = catGroundAt(cat.position.x, cat.position.z, cat.position.y);
+      cat.position.y += (gy-cat.position.y)*Math.min(1,8*dt);
+      applyCatVisual(dt,true);
+      return;
+    }
+    // 到着：毛づくろい・見張りなど、のんびりしたしぐさ
+    CAT.idleActionTimer -= dt;
+    const t = G.elapsed*2;
+    catHead.rotation.y = Math.sin(t*0.6)*0.5;   // きょろきょろ
+    catTail.rotation.z = Math.sin(t*1.2)*0.2;
+    if (CAT.idleAction === 1){                   // 毛づくろい
+      catHead.rotation.x = -0.5 + Math.sin(t*4)*0.15;
+    } else {
+      catHead.rotation.x = 0;
+    }
+    applyCatVisual(dt, false);
+    if (CAT.idleActionTimer <= 0){
+      CAT.idleAction = 1 - CAT.idleAction;
+      CAT.idleActionTimer = rand(2.5, 4.5);
+    }
+    // ときどきROAMに戻って、新しい獲物が出ていないか確認する
+    if (!CAT._idleRecheck) CAT._idleRecheck = rand(4,7);
+    CAT._idleRecheck -= dt;
+    if (CAT._idleRecheck <= 0){
+      CAT._idleRecheck = null;
+      CAT.state = 'ROAM';
+      pickCatTarget();
+    }
+    return;
+  }
+
+  // ROAM
+  if (CAT.hop){ stepCatHop(dt); applyCatVisual(dt, true); return; }
+
+  // --- 気まぐれ：ときどき立ち止まって匂いを嗅ぐ ---
+  if (CAT.sniffTimer > 0){
+    CAT.sniffTimer -= dt;
+    catHead.rotation.x = 0.45 + Math.sin(G.elapsed*9)*0.12;   // 床の匂いを嗅ぐ
+    catHead.rotation.y = Math.sin(G.elapsed*2.2)*0.4;
+    applyCatVisual(dt, false);
+    if (CAT.sniffTimer <= 0){ catHead.rotation.x = 0; }
+    return;
+  }
+  // --- 気まぐれ：目標へ直行せず、まず別の場所へ寄り道することがある ---
+  if (CAT.wanderSpot){
+    const wx = CAT.wanderSpot.x-cat.position.x, wz = CAT.wanderSpot.z-cat.position.z;
+    const wd = Math.hypot(wx,wz);
+    CAT.wanderTimer -= dt;
+    if (wd < 0.6 || CAT.wanderTimer <= 0){
+      CAT.wanderSpot = null;
+      CAT.sniffTimer = rand(0.8, 2.0);     // 寄り道先で匂いを嗅ぐ
+    } else {
+      const nx=wx/wd, nz=wz/wd;
+      cat.position.x += nx*P.CAT_SPEED*0.75*dt;
+      cat.position.z += nz*P.CAT_SPEED*0.75*dt;
+      catYaw += angleDiff(Math.atan2(nx,nz), catYaw)*Math.min(1,6*dt);
+      resolveSolids(cat.position, CAT_R, cat.position.y, false);
+      cat.position.x = THREE.MathUtils.clamp(cat.position.x, ROOM.minX+0.4, ROOM.maxX-0.4);
+      cat.position.z = THREE.MathUtils.clamp(cat.position.z, ROOM.minZ+0.4, ROOM.maxZ-0.4);
+      const gy = catGroundAt(cat.position.x, cat.position.z, cat.position.y);
+      cat.position.y += (gy-cat.position.y)*Math.min(1,14*dt);
+      applyCatVisual(dt, true);
+    }
+    return;
+  }
+
+  if (!CAT.target || (CAT.targetKind==='food' && (CAT.target.eaten||CAT.target.locked))
+      || (CAT.targetKind==='wreck' && CAT.target.toppled)) pickCatTarget();
+  const tp = catTargetPos();
+  if (!tp){ applyCatVisual(dt,false); return; }
+
+  const dx = tp.x-cat.position.x, dz = tp.z-cat.position.z;
+  const hd = Math.hypot(dx,dz);
+  const vd = tp.y - cat.position.y;
+
+  // 高い所の目標 → 跳び乗る
+  if (vd > 0.3 && hd < 1.6 && vd <= P.CAT_HOP_MAX){
+    startCatHop(tp.x, tp.z, tp.y);
+    applyCatVisual(dt,true);
+    return;
+  }
+
+  if (hd > 0.45){
+    const nx = dx/hd, nz = dz/hd;
+    cat.position.x += nx*P.CAT_SPEED*dt;
+    cat.position.z += nz*P.CAT_SPEED*dt;
+    catYaw += angleDiff(Math.atan2(nx,nz), catYaw)*Math.min(1,7*dt);
+    // 台から降りるときは素早く落ちる（降りかけを壁と誤判定して跳び戻るのを防ぐ）
+    const gy = catGroundAt(cat.position.x, cat.position.z, cat.position.y);
+    if (gy < cat.position.y) cat.position.y += (gy-cat.position.y)*Math.min(1,20*dt);
+    else cat.position.y += (gy-cat.position.y)*Math.min(1,8*dt);
+    if (Math.abs(cat.position.y-gy) < 0.02) cat.position.y = gy;
+
+    // 進路上の家具に阻まれたら跳び乗って越える
+    if (CAT.hopCD > 0) CAT.hopCD -= dt;
+    const before = { x:cat.position.x, z:cat.position.z };
+    resolveSolids(cat.position, CAT_R, cat.position.y, false);
+    cat.position.x = THREE.MathUtils.clamp(cat.position.x, ROOM.minX+0.4, ROOM.maxX-0.4);
+    cat.position.z = THREE.MathUtils.clamp(cat.position.z, ROOM.minZ+0.4, ROOM.maxZ-0.4);
+    const pushed = Math.hypot(cat.position.x-before.x, cat.position.z-before.z);
+    if (pushed > 0.004 && CAT.hopCD <= 0){
+      const blocker = findCatBlocker();
+      // 今いる台そのものには跳び戻らない。明確に上にあるものだけ跳び越える
+      if (blocker && blocker.top - cat.position.y > 0.15
+          && blocker.top - cat.position.y <= P.CAT_HOP_MAX){
+        const bx = THREE.MathUtils.clamp(tp.x, blocker.minX+0.35, blocker.maxX-0.35);
+        const bz = THREE.MathUtils.clamp(tp.z, blocker.minZ+0.35, blocker.maxZ-0.35);
+        startCatHop(bx, bz, blocker.top);
+        CAT.hopCD = 1.0;
+      }
+    }
+    applyCatVisual(dt,true);
+  } else if (Math.abs(vd) < 0.6){
+    catDoAction();
+    applyCatVisual(dt,false);
+  } else {
+    applyCatVisual(dt,false);
+  }
+}
+
+// ひとの気配で静かに逃げる（メッセージだけ変える）
+function catFleeQuiet(){
+  if (CAT.state === 'FLEE' || CAT.state === 'GONE') return;
+  CAT.state = 'FLEE';
+  CAT.target = null; CAT.hop = null;
+  showMsg('ネコは さっさと にげていった… 🐈', 1500);
+}
+
+function findCatBlocker(){
+  let best=null, bd=1e9;
+  for (const f of furniture){
+    if (f.toppled) continue;
+    if (f.top <= cat.position.y + P.BLOCK_TOL) continue;
+    const cx = Math.max(f.minX, Math.min(cat.position.x, f.maxX));
+    const cz = Math.max(f.minZ, Math.min(cat.position.z, f.maxZ));
+    const d = Math.hypot(cat.position.x-cx, cat.position.z-cz);
+    if (d < bd){ bd=d; best=f; }
+  }
+  return (bd < CAT_R+0.3) ? best : null;
+}
+
+function stepCatHop(dt){
+  const h = CAT.hop;
+  h.t += dt;
+  const r = Math.min(1, h.t/h.dur);
+  cat.position.x = h.fx + (h.tx-h.fx)*r;
+  cat.position.z = h.fz + (h.tz-h.fz)*r;
+  cat.position.y = h.fy + (h.ty-h.fy)*r + Math.sin(Math.PI*r)*h.h;
+  catYaw += angleDiff(Math.atan2(h.tx-h.fx, h.tz-h.fz), catYaw)*Math.min(1,8*dt);
+  if (r >= 1){ cat.position.y = h.ty; CAT.hop = null; }
+}
+
+// ネコがやったことは、ぜんぶ いぬのせいになる
+function catDoAction(){
+  if (CAT.targetKind === 'food'){
+    const f = CAT.target;
+    if (!f.eaten){
+      f.eaten = true;
+      scene.remove(f.group);
+      CAT.ate++;
+      SFX.chew();
+      spawnEvidence(f.x+rand(-0.4,0.4), f.z+rand(-0.4,0.4), f.def.color);
+      showMsg(`ネコに ${f.def.name} を たべられた… 😾`, 1500);
+      updateHUD();
+    }
+  } else if (CAT.targetKind === 'wreck'){
+    const f = CAT.target;
+    if (!f.toppled){
+      CAT.wrecked++;
+      if (f.kind === 'trash') topplTrash(1,0);
+      else toppleChair(f);
+      showMsg('ネコが やらかした…！（いぬのせい） 😿', 1700);
+    }
+  }
+  CAT.target = null;
+  CAT.state = 'ACT';
+  CAT.actTimer = P.CAT_ACT_TIME;
+}
+
+function applyCatVisual(dt, moving){
+  cat.rotation.y = catYaw;
+  if (CAT.hop){
+    catRig.rotation.x = -0.25;
+    catLegs.forEach((l,i)=>{ l.rotation.x = (i<2 ? 0.5 : -0.5); });
+  } else {
+    catRig.rotation.x *= Math.pow(0.05, dt);
+    catLegs.forEach((l,i)=>{
+      if (moving){
+        const ph = G.elapsed*15 + (i%2===0?0:Math.PI);
+        l.rotation.x = Math.sin(ph)*0.5;
+      } else l.rotation.x *= Math.pow(0.05, dt);
+    });
+  }
+}
+
+/* --- いぬが吠える（速いが物音になる） --- */
+let barkCD = 0;
+function bark(){
+  if (barkCD > 0 || G.state === 'CAUGHT' || !G.started) return;
+  barkCD = P.BARK_COOLDOWN;
+  SFX.bark();
+  setPose({ headUp:0.7, tailSpeed:16, tailAmp:0.6 });
+  // 吠えれば当然ひとに気づかれる
+  G.alertGauge = Math.min(P.ALERT_MAX, G.alertGauge + P.NOISE_BONUS);
+  investigate(dog.position.x, dog.position.z);
+  const d = Math.hypot(dog.position.x-cat.position.x, dog.position.z-cat.position.z);
+  if (cat.visible && CAT.state !== 'FLEE' && CAT.state !== 'GONE' && d < P.CAT_BARK_RANGE){
+    CAT.barkCount++;
+    if (CAT.barkCount >= P.CAT_BARKS_NEEDED) catFlee('ネコを おいはらった！ 🐈‍⬛');
+    else showMsg(`ワン！（あと ${P.CAT_BARKS_NEEDED-CAT.barkCount}かい）`, 800);
+  } else {
+    showMsg('ワン！ 🗣️', 700);
+  }
+}
 /* ============================================================
    14. 耳（気配）
    ============================================================ */
@@ -1055,7 +1769,9 @@ function updatePose(dt){
   });
   rig.rotation.z = pose.roll;
   rig.rotation.x = pose.tilt - pose.sit*0.3;
-  rig.position.y = -pose.sit*0.12 - Math.abs(pose.roll)*0.06;
+  // roll（お腹を見せる）で体が大きく傾くほど、地面にめり込まないよう持ち上げる
+  const rollLift = (1 - Math.cos(pose.roll)) * 0.52;
+  rig.position.y = -pose.sit*0.12 + rollLift;
   headGroup.rotation.x = -pose.headUp*0.55
     + noseRub * (Math.sin(G.elapsed*16)*0.18 + 0.25);
   shines.forEach(s=> s.visible = pose.shine);
@@ -1065,13 +1781,55 @@ function updatePose(dt){
   }
   // 前足あげ
   if (pose.pawUp > 0.01){ legs[3].rotation.x = -pose.pawUp*1.2; }
-  tailPivot.rotation.y = Math.sin(G.elapsed*pose.tailSpeed)*pose.tailAmp;
+  // しっぽは立っているので、Y軸だと見た目が動かない。Z軸で左右にフリフリさせる
+  tailPivot.rotation.z = Math.sin(G.elapsed*pose.tailSpeed)*pose.tailAmp;
 }
 
 /* ============================================================
-   16. いぬ操作（段差・ジャンプ）
+   16. いぬ操作（段差・ジャンプ・よじ登り）
    ============================================================ */
 let moveInput = 0;
+
+// 今のいぬの高さから届く範囲にある「壁」を、よじ登り対象として探す
+// 単に最寄りではなく「いぬが向いている方向にあるもの」を優先する
+// （テーブルの手前に椅子があると、椅子ばかり選ばれて机に乗れないため）
+function findClimbTarget(){
+  const y = dog.position.y;
+  const fx = Math.sin(dogYaw), fz = Math.cos(dogYaw);
+  let best = null, bestScore = -1e9;
+  for (const f of furniture){
+    if (f.toppled) continue;
+    if (f.top <= y + P.BLOCK_TOL) continue;          // 既に乗れる高さ（壁ではない）
+    if (f.top - y > P.CLIMB_MAX_HEIGHT) continue;     // 高すぎて届かない
+    const cx = Math.max(f.minX, Math.min(dog.position.x, f.maxX));
+    const cz = Math.max(f.minZ, Math.min(dog.position.z, f.maxZ));
+    const d = Math.hypot(dog.position.x-cx, dog.position.z-cz);
+    if (d >= DOG_R + P.CLIMB_APPROACH) continue;
+    // いぬの正面方向との一致度（-1〜1）。正面にあるものを強く優先する
+    let facing = 0;
+    const vx = cx-dog.position.x, vz = cz-dog.position.z;
+    const vl = Math.hypot(vx,vz);
+    if (vl > 0.001) facing = (vx/vl)*fx + (vz/vl)*fz;
+    const score = facing*2.0 - d*0.8;
+    if (score > bestScore){ bestScore = score; best = f; }
+  }
+  return best;
+}
+
+// よじ登り中、対象(exclude)以外の家具にはめり込まないよう押し返す
+function resolveClimbCollision(pos, radius, y, exclude){
+  for (const f of furniture){
+    if (f === exclude || f.toppled) continue;
+    if (f.top <= y + P.BLOCK_TOL) continue;
+    const cx = Math.max(f.minX, Math.min(pos.x, f.maxX));
+    const cz = Math.max(f.minZ, Math.min(pos.z, f.maxZ));
+    const dx = pos.x-cx, dz = pos.z-cz, d = Math.hypot(dx,dz);
+    if (d >= radius || d < 0.0001) continue;
+    const push = radius-d;
+    pos.x += dx/d*push; pos.z += dz/d*push;
+  }
+}
+
 function updateDog(dt){
   let ix=0, iz=0;
   if (keys['KeyW']||keys['ArrowUp'])    iz -= 1;
@@ -1083,10 +1841,10 @@ function updateDog(dt){
   if (len>1){ ix/=len; iz/=len; }
   moveInput = Math.min(1, len);
   const moving = moveInput > 0.15;
+  const jumpInput = jumpHeld || keys['Space'];
 
   // --- 甘えのごろごろ（無操作で発動） ---
-  const jumpInput = jumpHeld || keys['Space'];
-  if (!moving && !jumpInput && G.onGround && !nearAction){
+  if (!moving && !jumpInput && G.onGround && !nearAction && !G.climbing){
     G.idleTimer += dt;
   } else {
     G.idleTimer = 0;
@@ -1102,7 +1860,25 @@ function updateDog(dt){
     setPose({});
   }
 
-  if (moving && !G.rolling){
+  // --- よじ登り判定（長押し）：近くに対象があれば、通常ジャンプより優先 ---
+  // 空中でも対象の有無だけは判定し、通常ジャンプが暴発しないようにする
+  const climbTarget = (!G.climbing && !G.rolling) ? findClimbTarget() : null;
+  if (climbTarget){
+    if (jumpInput){
+      if (G.onGround) G.climbHoldTimer += dt;   // 実際に地に足がついてから溜まる
+      if (G.onGround && G.climbHoldTimer >= P.CLIMB_HOLD_TIME){
+        G.climbing = true; G.climbTarget = climbTarget;
+        G.onGround = false; G.vy = 0; G.jumpActive = false;
+        SFX.jump();
+      }
+    } else {
+      G.climbHoldTimer = 0;
+    }
+  } else if (!G.climbing){
+    G.climbHoldTimer = 0;
+  }
+
+  if (moving && !G.rolling && !G.climbing){
     const targetYaw = Math.atan2(ix,iz);
     dogYaw += angleDiff(targetYaw, dogYaw)*Math.min(1, P.DOG_TURN*dt);
     const sp = P.DOG_SPEED*moveInput*(G.onGround?1:0.85);
@@ -1111,42 +1887,80 @@ function updateDog(dt){
   }
   dog.rotation.y = dogYaw;
 
-  // --- ジャンプ ---
-  if (jumpInput && G.onGround && !G.jumpActive && !G.rolling){
-    G.vy = P.JUMP_V0; G.onGround = false; G.jumpActive = true; G.jumpHold = 0;
-    SFX.jump();
+  // --- 通常ジャンプ（よじ登り対象が近くに無いときだけ。タップ/長押しで高さ調整） ---
+  if (!climbTarget && !G.climbing){
+    if (jumpInput && G.onGround && !G.jumpActive && !G.rolling){
+      G.vy = P.JUMP_V0; G.onGround = false; G.jumpActive = true; G.jumpHold = 0;
+      SFX.jump();
+    }
+    if (G.jumpActive){
+      if (jumpInput && G.jumpHold < P.JUMP_HOLD_T && G.vy > 0){
+        G.vy += P.JUMP_HOLD_F*dt; G.jumpHold += dt;
+      } else if (!jumpInput){ G.jumpActive = false; }
+    }
   }
-  if (G.jumpActive){
-    if (jumpInput && G.jumpHold < P.JUMP_HOLD_T && G.vy > 0){
-      G.vy += P.JUMP_HOLD_F*dt; G.jumpHold += dt;
-    } else if (!jumpInput){ G.jumpActive = false; }
-  }
-  const chargeRatio = G.jumpActive ? Math.min(1, G.jumpHold/P.JUMP_HOLD_T) : 0;
+
+  // ジャンプ/よじ登りゲージ表示
+  let chargeRatio = 0;
+  if (climbTarget) chargeRatio = Math.min(1, G.climbHoldTimer/P.CLIMB_HOLD_TIME);
+  else if (G.jumpActive) chargeRatio = Math.min(1, G.jumpHold/P.JUMP_HOLD_T);
   jumpChargeEl.style.background =
     `conic-gradient(#fff36b ${chargeRatio*360}deg, transparent ${chargeRatio*360}deg)`;
+  jumpLabelEl.textContent = climbTarget ? 'のぼる' : 'ジャンプ';
 
-  // --- 重力・着地 ---
-  const prevY = dog.position.y;
-  G.vy -= P.GRAVITY*dt;
-  dog.position.y += G.vy*dt;
+  // --- よじ登り中の移動（対象以外の家具にはめり込まないよう当たり判定を維持） ---
+  if (G.climbing){
+    const f = G.climbTarget;
+    if (!jumpInput || !f){
+      G.climbing = false;   // 手を離したら通常の落下へ
+    } else {
+      dog.position.y += P.CLIMB_SPEED*dt;
+      const tx = THREE.MathUtils.clamp(dog.position.x, f.minX+0.45, f.maxX-0.45);
+      const tz = THREE.MathUtils.clamp(dog.position.z, f.minZ+0.45, f.maxZ-0.45);
+      dog.position.x += (tx-dog.position.x)*Math.min(1, 9*dt);
+      dog.position.z += (tz-dog.position.z)*Math.min(1, 9*dt);
+      resolveClimbCollision(dog.position, DOG_R, dog.position.y, f);
+      dog.position.x = THREE.MathUtils.clamp(dog.position.x, ROOM.minX+0.4, ROOM.maxX-0.4);
+      dog.position.z = THREE.MathUtils.clamp(dog.position.z, ROOM.minZ+0.4, ROOM.maxZ-0.4);
+      if (dog.position.y >= f.top){
+        dog.position.y = f.top;
+        G.vy = 0; G.onGround = true;
+        G.climbing = false; G.climbTarget = null; G.climbHoldTimer = 0;
+        SFX.land();
+        showMsg('よいしょっと 🐾', 700);
+      }
+    }
+  }
 
-  dog.position.x = THREE.MathUtils.clamp(dog.position.x, ROOM.minX+0.4, ROOM.maxX-0.4);
-  dog.position.z = THREE.MathUtils.clamp(dog.position.z, ROOM.minZ+0.4, ROOM.maxZ-0.4);
-  resolveSolids(dog.position, DOG_R, dog.position.y, true);
+  // --- 重力・着地（よじ登り中は適用しない） ---
+  if (!G.climbing){
+    const prevY = dog.position.y;
+    G.vy -= P.GRAVITY*dt;
+    dog.position.y += G.vy*dt;
 
-  const gy = groundHeightAt(dog.position.x, dog.position.z, dog.position.y, prevY);
-  G.groundY = gy;
-  if (dog.position.y <= gy){
-    if (!G.onGround && G.vy < -3) SFX.land();
-    dog.position.y = gy; G.vy = 0; G.onGround = true; G.jumpActive = false;
-  } else {
-    G.onGround = false;
+    dog.position.x = THREE.MathUtils.clamp(dog.position.x, ROOM.minX+0.4, ROOM.maxX-0.4);
+    dog.position.z = THREE.MathUtils.clamp(dog.position.z, ROOM.minZ+0.4, ROOM.maxZ-0.4);
+    resolveSolids(dog.position, DOG_R, dog.position.y, true);
+    // 家具の押し戻しで部屋の外(壁の向こう)へ出てしまうことがあるので、再度クランプする
+    dog.position.x = THREE.MathUtils.clamp(dog.position.x, ROOM.minX+0.4, ROOM.maxX-0.4);
+    dog.position.z = THREE.MathUtils.clamp(dog.position.z, ROOM.minZ+0.4, ROOM.maxZ-0.4);
+
+    const gy = groundHeightAt(dog.position.x, dog.position.z, dog.position.y, prevY);
+    G.groundY = gy;
+    if (dog.position.y <= gy){
+      if (!G.onGround && G.vy < -3) SFX.land();
+      dog.position.y = gy; G.vy = 0; G.onGround = true; G.jumpActive = false;
+    } else {
+      G.onGround = false;
+    }
   }
 
   // 脚アニメ
   if (!G.rolling){
     legs.forEach((leg,i)=>{
-      if (!G.onGround){
+      if (G.climbing){
+        leg.rotation.x = (i<2 ? 0.5 : -0.6);   // よじ登り中はもがく脚の演出
+      } else if (!G.onGround){
         leg.rotation.x = (i<2 ? 0.4 : -0.4);
       } else if (moving){
         const ph = G.elapsed*13 + (i%2===0?0:Math.PI);
@@ -1161,17 +1975,34 @@ function updateDog(dt){
   else jaw.position.y = -0.26;
 }
 
+
 /* ============================================================
    17. たべる
    ============================================================ */
+// 床の食べ物が家具の足元や椅子の隙間に入り込むと、いぬの体(半径0.72)が近づけず
+// 永久に取れなくなる。床にある食べ物は、届く位置まで押し出しておく。
+function nudgeFoodReachable(f){
+  if (f.y > 0.5 || f.falling) return;       // 台の上のもの・落下中は対象外
+  // 家具から離すだけでは、椅子とテーブルの隙間のように
+  // 「どの家具の中でもないが、いぬが体を入れられない」場所に残ってしまう。
+  // 実際にいぬが立てるかどうかで判定してずらす。
+  const nudged = nudgeToReachable(f.x, f.z);
+  f.x = THREE.MathUtils.clamp(nudged.x, ROOM.minX+0.6, ROOM.maxX-0.6);
+  f.z = THREE.MathUtils.clamp(nudged.z, ROOM.minZ+0.6, ROOM.maxZ-0.6);
+  f.group.position.set(f.x, f.y, f.z);
+}
+
 function updateFoods(dt){
   foods.forEach(f=>{
-    if (f.eaten) return;
+    if (f.eaten || f.locked) return;
     // 落下中
     if (f.falling){
       f.vy -= P.GRAVITY*dt;
       f.y += f.vy*dt;
-      if (f.y <= 0.28){ f.y = 0.28; f.vy = 0; f.falling = false; }
+      if (f.y <= 0.28){
+        f.y = 0.28; f.vy = 0; f.falling = false;
+        nudgeFoodReachable(f);      // 家具の足元に入り込んでいたら押し出す
+      }
       f.group.position.set(f.x, f.y, f.z);
     } else {
       f.group.position.y = f.y + Math.sin(G.elapsed*2 + f.x)*0.06;
@@ -1181,7 +2012,7 @@ function updateFoods(dt){
 
     const hd = Math.hypot(dog.position.x-f.x, dog.position.z-f.z);
     const vd = Math.abs(dog.position.y - f.y);
-    if (hd < 0.95 && vd < 0.85) eatFood(f);
+    if (hd < 1.25 && vd < 0.85) eatFood(f);
   });
 }
 
@@ -1209,8 +2040,12 @@ function eatFood(f){
     G.riskGauge = 40; SFX.tummy();
     showMsg('おなかが ぐるぐる… 🌀', 1800);
   }
-  const left = foods.filter(x=>!x.eaten).length;
-  if (left === 0) setTimeout(()=>showMsg('ぜんぶ たべた！ だいまんぞく！ 🎉', 3000), 1200);
+  // 冷蔵庫を開けていない分(locked)は「まだ取れない」ので完食判定から除く
+  const left = foods.filter(x=>!x.eaten && !x.locked).length;
+  if (left === 0){
+    showMsg('ぜんぶ たべた！ だいまんぞく！ 🎉', 2500);
+    setTimeout(()=>{ if (G.state !== 'CAUGHT') endGame('allEaten'); }, 2600);
+  }
 }
 
 /* ============================================================
@@ -1230,26 +2065,26 @@ function updateActions(dt){
   for (const ev of evidences){
     const d = Math.hypot(dog.position.x-ev.x, dog.position.z-ev.z);
     ev.mark.material.opacity = 0.35 + Math.sin(G.elapsed*4+ev.x)*0.18;
-    if (d < 1.0 && d < bestD && dog.position.y < 0.4){
+    if (d < 1.3 && d < bestD && dog.position.y < 0.4){
       bestD = d; best = { kind:'ev', ev, label:'はなで かくしてる…', time:P.HIDE_TIME };
     }
   }
-  // クロス
-  if (!clothPulled){
-    const d = Math.hypot(dog.position.x-CLOTH_PULL.x, dog.position.z-CLOTH_PULL.z);
-    clothMarker.material.opacity = 0.4 + Math.sin(G.elapsed*3)*0.2;
-    if (d < 1.0 && d < bestD && dog.position.y < 0.4){
-      bestD = d; best = { kind:'cloth', label:'クロスを ひっぱってる…', time:P.CLOTH_PULL_TIME };
+  // 冷蔵庫のドア
+  if (!fridgeOpened){
+    const d = Math.hypot(dog.position.x-fridgeMarker.position.x, dog.position.z-fridgeMarker.position.z);
+    fridgeMarker.material.opacity = 0.4 + Math.sin(G.elapsed*3)*0.2;
+    if (d < 1.4 && d < bestD && dog.position.y < 0.4){
+      bestD = d; best = { kind:'fridge', label:'まえあしで とびらを あけてる…', time:P.FRIDGE_OPEN_TIME };
     }
   } else {
-    clothMarker.visible = false;
+    fridgeMarker.visible = false;
   }
 
   nearAction = best;
 
   // 進行 / リセット
   evidences.forEach(ev=>{ if (!best || best.ev !== ev) ev.progress = 0; });
-  if (!best || best.kind !== 'cloth') clothPull = 0;
+  if (!best || best.kind !== 'fridge') fridgeHoldT = 0;
 
   let ratio = 0;
   if (best && still){
@@ -1258,15 +2093,15 @@ function updateActions(dt){
       ratio = best.ev.progress / best.time;
       if (best.ev.progress >= best.time){ removeEvidence(best.ev); nearAction = null; ratio = 0; }
     } else {
-      clothPull += dt;
-      ratio = clothPull / best.time;
-      if (clothPull >= best.time){ pullCloth(); nearAction = null; ratio = 0; }
+      fridgeHoldT += dt;
+      ratio = fridgeHoldT / best.time;
+      if (fridgeHoldT >= best.time){ openFridge(); nearAction = null; ratio = 0; }
     }
-    noseRub = Math.min(1, noseRub + dt*6);   // 鼻をこすりつける / ひっぱる演出
+    noseRub = Math.min(1, noseRub + dt*6);   // 鼻をこすりつける / ドアを押す演出
   } else if (best){
     noseRub = Math.max(0, noseRub - dt*6);
     if (best.kind === 'ev') best.ev.progress = 0;
-    else clothPull = 0;
+    else fridgeHoldT = 0;
   }
 
   if (best && ratio > 0){
@@ -1294,34 +2129,29 @@ function removeEvidence(ev){
   updateHUD();
 }
 
-function pullCloth(){
-  clothPulled = true;
-  clothAnim = 1;
-  clothMarker.visible = false;
-  // テーブルの上のものが落ちる
-  foods.forEach(f=>{
-    if (f.eaten || !f.def.onTable) return;
-    f.falling = true; f.vy = 1.0;
-    f.x += rand(-1.2,1.2); f.z += rand(-1.2,1.2);
-    f.x = THREE.MathUtils.clamp(f.x, ROOM.minX+0.6, ROOM.maxX-0.6);
-    f.z = THREE.MathUtils.clamp(f.z, ROOM.minZ+0.6, ROOM.maxZ-0.6);
-    f.def.onTable = false;
+function openFridge(){
+  fridgeOpened = true;
+  fridgeMarker.visible = false;
+  // 中身は庫内のままだと当たり判定の中で取れないので、手前の床に転がり出す
+  fridgeFoods.forEach((f,i)=>{
+    f.locked = false;
+    f.group.visible = true;
+    f.x = -8.45 + rand(-0.25,0.25);
+    f.z = 6.6 + (i===0 ? -0.7 : 0.7) + rand(-0.2,0.2);
+    f.y = 0.9;
+    f.falling = true; f.vy = 0.5;
+    f.group.position.set(f.x, f.y, f.z);
   });
-  for (let i=0;i<3;i++) spawnEvidence(TABLE.x+rand(-2,2), TABLE.z+rand(-2,2), 0xe8e0f0);
-  bigNoify();
+  SFX.clatter();
+  G.alertGauge = Math.min(P.ALERT_MAX, G.alertGauge + 12);
+  investigate(fridgeF.baseX, fridgeF.baseZ);
+  showMsg('れいぞうこ あけちゃった！ 🥶', 1400);
 }
-function bigNoify(){ bigNoise('クロスを ひっぱった！ 💥', TABLE.x, TABLE.z); }
 
-function updateCloth(dt){
-  if (!clothPulled) return;
-  if (clothAnim > 0){
-    clothAnim -= dt*0.9;
-    clothGroup.position.x = TABLE.x - (1-Math.max(0,clothAnim))*3.4;
-    clothGroup.position.z = TABLE.z + (1-Math.max(0,clothAnim))*2.4;
-    clothGroup.position.y = -(1-Math.max(0,clothAnim))*0.95;
-    clothGroup.rotation.z = (1-Math.max(0,clothAnim))*0.6;
-    if (clothAnim <= 0) clothAnim = 0;
-  }
+function updateFridge(dt){
+  const target = fridgeOpened ? 1 : 0;
+  fridgeOpen += (target-fridgeOpen) * Math.min(1, 4*dt);
+  fridgeDoorPivot.rotation.y = fridgeOpen * (Math.PI*0.55);
 }
 
 /* ============================================================
@@ -1360,22 +2190,23 @@ const ACTS = [
 
 const QTE = {
   phase:'idle', seq:[], index:0, timer:0, actScore:0, total:0,
-  taps:0, dir:null, resolved:false, penalty:0, spin:0
+  taps:0, dir:null, resolved:false, penalty:0, spin:0, attempts:0, elapsedInAct:0
 };
 const ACT_MAX = 25;
+const ACT_HARD_CAP = 9.0;    // どうしても決まらないときの最大延長時間（そこで強制的に次へ）
+const SWIPE_MAX_TRIES = 5;   // スワイプの向き違いを許容する最大回数
 
 function startQTE(){
   qteEl.style.display = 'block';
   resetJoy(); jumpHeld = false;
   G.rolling = false; G.idleTimer = 0;
 
-  // 演目：しっぽブンブン → 残りからランダム3つ
-  const rest = ACTS.filter(a=>a.id!=='wag').sort(()=>Math.random()-0.5).slice(0,3);
-  QTE.seq = [ACTS[0], ...rest];
+  // 演目：全演目からランダムに4つ、順番もランダム（毎回しっぽブンブンが先とは限らない）
+  QTE.seq = [...ACTS].sort(()=>Math.random()-0.5).slice(0,4);
   QTE.index = 0; QTE.total = 0; QTE.spin = 0;
   QTE.penalty = Math.min(25, evidences.length*7) + (G.mouthDirty>0 ? 15 : 0);
   if (trashF.toppled) QTE.penalty = Math.min(35, QTE.penalty+8);
-  if (clothPulled)    QTE.penalty = Math.min(40, QTE.penalty+8);
+  if (chairs.some(c=>c.toppled)) QTE.penalty = Math.min(40, QTE.penalty+6);
 
   QTE.phase = 'act';
   SFX.scold();
@@ -1388,6 +2219,7 @@ function startQTE(){
 function beginAct(){
   const a = QTE.seq[QTE.index];
   QTE.timer = a.dur; QTE.actScore = 0; QTE.taps = 0; QTE.resolved = false;
+  QTE.attempts = 0; QTE.elapsedInAct = 0;
   QTE.dir = a.kind==='swipe' ? a.dirs[Math.floor(Math.random()*a.dirs.length)] : null;
   qteStep.textContent = `えんぎ ${QTE.index+1} / ${QTE.seq.length}`;
   qteTitle.textContent = a.title;
@@ -1397,17 +2229,34 @@ function beginAct(){
   setPose(a.pose);
 }
 
-function endAct(gain, judgeText){
+// 成功してから次の演目へ。ポーズが決まる余韻を見せてから遷移する
+function succeedAct(gain, judgeText){
   QTE.resolved = true;
   QTE.total += gain;
   qteJudge.textContent = judgeText;
   qteJudge.style.opacity = 1;
   updateQTEBar();
+  SFX.good();
   setTimeout(()=>{
     QTE.index++;
     if (QTE.index >= QTE.seq.length) finishQTE();
     else beginAct();
-  }, 620);
+  }, 1900);   // ちゃんと甘えたポーズを見せてから次へ（十分に間をとる）
+}
+
+// 上手くいかなかったので、同じ演目をもう一度（向きを変えて）試す
+function retryAct(msg){
+  QTE.attempts++;
+  const a = QTE.seq[QTE.index];
+  if (a.kind === 'swipe'){
+    QTE.dir = a.dirs[Math.floor(Math.random()*a.dirs.length)];
+    qteHint.textContent = ARROW[QTE.dir];
+  }
+  QTE.timer = a.dur;
+  qteJudge.textContent = msg;
+  qteJudge.style.opacity = 1;
+  setTimeout(()=>{ qteJudge.style.opacity = 0; }, 500);
+  SFX.miss();
 }
 
 function updateQTEBar(){
@@ -1444,20 +2293,27 @@ qteEl.addEventListener('pointerup', e=>{
   let dir;
   if (Math.abs(dx) > Math.abs(dy)) dir = dx>0 ? 'right' : 'left';
   else dir = dy>0 ? 'down' : 'up';
-  if (dir === QTE.dir){ SFX.good(); endAct(ACT_MAX, 'ばっちり！'); }
-  else { SFX.miss(); endAct(6, 'ちがう むき…'); }
+  if (dir === QTE.dir){
+    succeedAct(ACT_MAX, 'ばっちり！');
+  } else if (QTE.attempts >= SWIPE_MAX_TRIES-1){
+    succeedAct(ACT_MAX*0.6, 'なんとか できた…');
+  } else {
+    retryAct('ちがう むき… もういちど！');
+  }
 }, {passive:false});
 
 function updateQTE(dt){
   if (QTE.phase !== 'act') return;
   const a = QTE.seq[QTE.index];
   QTE.timer -= dt;
-  qteTimer.style.width = Math.max(0,(QTE.timer/a.dur)*100) + '%';
+  QTE.elapsedInAct += dt;
+  // ゲージは「できばえ」と同じく増える向きに（残りではなく経過を表示）
+  qteTimer.style.width = Math.min(100, Math.max(0, (1 - QTE.timer/a.dur)*100)) + '%';
 
   if (a.kind === 'mash'){
     QTE.actScore = Math.min(ACT_MAX, (QTE.taps/a.taps)*ACT_MAX);
     updateQTEBar();
-    tailPivot.rotation.y = Math.sin(G.elapsed*26)*0.95;
+    tailPivot.rotation.z = Math.sin(G.elapsed*26)*0.95;
   } else if (a.kind === 'still'){
     QTE.actScore = Math.min(ACT_MAX, QTE.actScore + (ACT_MAX/a.dur)*dt);
     updateQTEBar();
@@ -1469,15 +2325,27 @@ function updateQTE(dt){
   if (QTE.timer <= 0 && !QTE.resolved){
     if (a.kind === 'mash'){
       const ok = QTE.actScore >= ACT_MAX*0.6;
-      if (ok) SFX.good(); else SFX.miss();
-      endAct(QTE.actScore, ok ? 'いいね！' : 'ちょっと よわい…');
+      if (ok || QTE.elapsedInAct >= ACT_HARD_CAP){
+        succeedAct(Math.max(QTE.actScore, ACT_MAX*0.5), ok ? 'いいね！' : 'なんとか できた…');
+      } else {
+        QTE.timer = a.dur;   // もっと れんだ！と延長
+        showMsg('もっと れんだ！', 700);
+      }
     } else if (a.kind === 'still'){
       const ok = QTE.actScore >= ACT_MAX*0.7;
-      if (ok) SFX.good(); else SFX.miss();
-      endAct(QTE.actScore, ok ? 'かんぺき…！' : 'そわそわ してた…');
+      if (ok || QTE.elapsedInAct >= ACT_HARD_CAP){
+        succeedAct(Math.max(QTE.actScore, ACT_MAX*0.5), ok ? 'かんぺき…！' : 'なんとか できた…');
+      } else {
+        QTE.timer = a.dur;   // まだ そわそわしてる、もう少し
+        showMsg('もうすこし がまん！', 700);
+      }
     } else {
-      SFX.miss();
-      endAct(4, 'まにあわなかった…');
+      // スワイプがタイムアウト：向きを変えて再挑戦
+      if (QTE.attempts >= SWIPE_MAX_TRIES-1){
+        succeedAct(ACT_MAX*0.6, 'なんとか できた…');
+      } else {
+        retryAct('まにあわなかった… もういちど！');
+      }
     }
   }
 }
@@ -1503,7 +2371,7 @@ function finishQTE(){
     let reason = 'えんぎが たりなかった…';
     if (evidences.length > 0) reason = 'しょうこが のこってた…';
     else if (G.mouthDirty > 0) reason = 'くちに ついたまま だった…';
-    else if (trashF.toppled || clothPulled) reason = 'あらしすぎた…';
+    else if (trashF.toppled || chairs.some(c=>c.toppled)) reason = 'あらしすぎた…';
     qteSub.textContent = reason + ' -10';
     setPose({ sit:1.0, headUp:-0.2, earBack:true, tailSpeed:2, tailAmp:0.1 });
     G.score -= 10;
@@ -1527,8 +2395,14 @@ function finishQTE(){
     G.mouthDirty = 0;
     dog.rotation.y = dogYaw;
     setPose({});
-    setState('NORMAL');
-    showMsg(safe ? 'いまのうち…！ 🐾' : 'こんどは バレないぞ！ 🐾', 1600);
+    if (G.pendingEnd === 'caught'){
+      endGame('caught');
+    } else if (G.gameTime <= 0){
+      endGame('time');
+    } else {
+      setState('NORMAL');
+      showMsg(safe ? 'いまのうち…！ 🐾' : 'こんどは バレないぞ！ 🐾', 1600);
+    }
   }, safe ? 2600 : 3600);
 }
 
@@ -1537,10 +2411,13 @@ function finishQTE(){
    ============================================================ */
 const scoreEl = document.getElementById('score');
 const eatenEl = document.getElementById('eaten');
+const totalEl = document.getElementById('total');
 const riskEl  = document.getElementById('riskFill');
 function updateHUD(){
   scoreEl.textContent = G.score;
   eatenEl.textContent = G.eaten;
+  // 「total」は常に「いぬが実際に完食しうる数（ネコに取られた分は除く）」を表示する
+  totalEl.textContent = Math.max(G.eaten, foods.length - CAT.ate);
   riskEl.style.width = G.riskGauge + '%';
 }
 function updateWobble(dt){
@@ -1566,9 +2443,16 @@ const clock = new THREE.Clock();
 function animate(){
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 1/30);
-  G.elapsed += dt; G.frames++;
+  G.elapsed += dt; G.frames++; G.lastDt = dt;
 
-  if (G.started){
+  if (G.started && !G.ended){
+    G.gameTime -= dt;
+    document.getElementById('timeLeft').textContent = Math.max(0, Math.ceil(G.gameTime));
+    document.getElementById('caughtCount').textContent = G.caughtCount;
+    if (G.gameTime <= 0 && G.state !== 'CAUGHT'){
+      endGame('time');
+    }
+
     if (G.noiseCooldown > 0) G.noiseCooldown -= dt;
     if (G.mouthDirty > 0) G.mouthDirty -= dt;
     mouthCrumb.visible = G.mouthDirty > 0;
@@ -1579,12 +2463,17 @@ function animate(){
       updateDog(dt);
       updateFoods(dt);
       updateActions(dt);
-      updateCloth(dt);
+      updateCat(dt);
+    }
+    if (barkCD > 0){
+      barkCD -= dt;
+      barkBtn.classList.toggle('cool', barkCD > 0);
     }
     updateOwner(dt);
     updateEars(dt);
     updatePose(dt);
     updateWobble(dt);
+    updateFridge(dt);
   }
 
   // カメラ
@@ -1617,9 +2506,69 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
   initAudio();
   startOverlay.style.display = 'none';
   G.started = true;
+  G.ended = false;
+  G.gameTime = P.GAME_TIME;
+  G.caughtCount = 0;
+  G.pendingEnd = null;
   G.normalTimer = rand(P.NORMAL_MIN, P.NORMAL_MAX);
+  CAT.state = 'GONE';
+  CAT.timer = rand(P.CAT_FIRST_DELAY_MIN, P.CAT_FIRST_DELAY_MAX);
   updateHUD();
   showMsg('かいぬしは べつのへや。いまのうち！ 🐾', 2200);
+});
+
+const endOverlay = document.getElementById('endOverlay');
+function endGame(reason){
+  if (G.ended) return;
+  G.ended = true;
+
+  const allEaten = foods.filter(f=>!f.eaten && !f.locked).length === 0;
+  let title;
+  if (reason === 'caught') title = 'とうとう みつかった…！';
+  else if (allEaten)       title = 'ぜんぶ たべた！ だいまんぞく！';
+  else                     title = 'じかん切れ！';
+
+  // --- 総括コメント ---
+  const lines = [];
+  if (G.eaten === 0){
+    lines.push('なにも たべられなかった… つぎは がんばろう。');
+  } else if (allEaten){
+    lines.push('キッチンの ごはんを のこらず せいあつ した。でんせつの いぬ。');
+  } else if (G.eaten >= 10){
+    lines.push('たくさん たべた！ おなかも こころも まんぷく。');
+  } else if (G.eaten >= 5){
+    lines.push('そこそこ せいか あり。まずまずの しゅうかく。');
+  } else {
+    lines.push('ちょっとしか つまみぐい できなかった。');
+  }
+
+  if (G.caughtCount === 0){
+    lines.push('いちども バレなかった！ かんぺきな しのびあし。');
+  } else if (reason === 'caught'){
+    lines.push(`${P.MAX_CAUGHT}かい みつかって、とうとう おしおき。`);
+  } else {
+    lines.push(`${G.caughtCount}かい みつかったが、なんとか ごまかしきった。`);
+  }
+
+  if (CAT.ate > 0 || CAT.wrecked > 0){
+    lines.push(`ネコに ${CAT.ate}こ よこどりされ、${CAT.wrecked}かい やらかされた…`);
+  } else {
+    lines.push('ネコの こうげきを かんぜんに ふうじた！');
+  }
+
+  if (G.riskGauge >= 70){
+    lines.push('ただ、おなかが かなり あやしい。あとで たいへんかも…');
+  }
+
+  document.getElementById('endTitle').textContent = title;
+  document.getElementById('endEaten').textContent = G.eaten;
+  document.getElementById('endCaught').textContent = G.caughtCount;
+  document.getElementById('endScore').textContent = G.score;
+  document.getElementById('endSummary').innerHTML = lines.join('<br>');
+  endOverlay.style.display = 'flex';
+}
+document.getElementById('retryBtn').addEventListener('click', ()=>{
+  location.reload();
 });
 
 /* ============================================================
@@ -1639,8 +2588,16 @@ window.__G = {
   get eaten(){ return G.eaten; },
   get mouthDirty(){ return G.mouthDirty; },
   get rolling(){ return G.rolling; },
+  get climbing(){ return G.climbing; },
+  get catState(){ return CAT.state; },
+  get catPos(){ return cat.position; },
+  get catAte(){ return CAT.ate; },
+  get catWrecked(){ return CAT.wrecked; },
+  get catBumps(){ return CAT.bumpCount; },
+  get catBarks(){ return CAT.barkCount; },
   get trashToppled(){ return trashF.toppled; },
-  get clothPulled(){ return clothPulled; },
+  get fridgeOpened(){ return fridgeOpened; },
+  get messTarget(){ return G.messTarget; },
   get chairsToppled(){ return chairs.filter(c=>c.toppled).length; },
   get qtePhase(){ return QTE.phase; },
   get qteAct(){ return QTE.seq[QTE.index] ? QTE.seq[QTE.index].id : null; },
@@ -1660,7 +2617,13 @@ window.__G = {
     jump(hold){ jumpHeld = true; setTimeout(()=>{ jumpHeld = false; }, (hold ?? 0.3)*1000); },
     spawnEvidence(x,z){ spawnEvidence(x,z,0xd8a24a); },
     toppleTrash(){ topplTrash(1,0); },
-    pullCloth(){ if(!clothPulled) pullCloth(); },
+    toppleChair(i){ toppleChair(chairs[i??0]); },
+    openFridge(){ if(!fridgeOpened) openFridge(); },
+    findClimbTarget(){ return findClimbTarget(); },
+    catEnter(){ catEnter(); },
+    catFlee(){ catFlee('テスト'); },
+    bark(){ barkCD = 0; bark(); },
+    moveCat(x,z,y){ cat.position.set(x, y ?? cat.position.y, z); },
     groundHeightAt(x,z,y){ return groundHeightAt(x,z,y); },
     inOwnerView(x,z,y){ return inOwnerView(x,z,y??0); },
     isOccluded(ax,az,bx,bz){ return isOccluded(ax,az,bx,bz); },
