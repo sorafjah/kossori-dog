@@ -173,7 +173,7 @@
 </style>
 </head>
 <body>
-<!-- build: 2026-07-29c stage2 -->
+<!-- build: 2026-07-29e stage2 -->
 
 <div id="ui">
   <span id="stageName">キッチン</span> &nbsp; スコア: <span id="score">0</span> &nbsp; たべた: <span id="eaten">0</span>/<span id="total">0</span><br>
@@ -218,7 +218,7 @@
   <p>ゴミばこや いすは おすと たおれる。<br>れいぞうこは まえで <b>じっとする</b> と あけられる。</p>
   <p>とちゅうで <b>おじゃまネコ</b> が しのびこんでくる。<br>ネコが たべたり たおしたりしたことも <b>ぜんぶ いぬのせい</b>！<br>ちかづいて なんども ぶつかる（しずか）か、<br><b>ワン！</b>で おいはらう（はやいが ものおとになる）。</p>
   <p>たべこぼしは そのばで <b>じっとして</b> はなでかくす。<br>かいぬしに しょうこを みつかると さがしに くる！<br>みつかったら、たっぷり とぼけて ごまかせ！</p>
-  <p>ステージ1は <b>キッチン</b>。おわると けっかはっぴょう、<br>そのあと ステージ2 <b>リビング</b> が はじまる。</p>
+  <p>ステージ1は <b>キッチン</b>。たべものを ぜんぶ たべきったら クリア、<br>ステージ2 <b>リビング</b> が はじまる。<br>でも <b>3かい みつかると しっぱい</b>、キッチンから やりなおし！</p>
   <p><b>視点</b> ボタンで いぬ目線に きりかえられる。</p>
   <p><b>たべものが なくなる</b>か、<b>3かい</b> みつかると そのへやは おしまい。</p>
   <button id="startBtn">はじめる</button>
@@ -1288,6 +1288,7 @@ function switchStage(to){
   G.state = 'NORMAL';
   G.alertGauge = 0;
   G.suspicious = false; G.suspicionTimer = 0;
+  G.cornerIndex = -1;   // 新しい部屋では見回り巡回を最初からやり直す
   G.normalTimer = rand(P.NORMAL_MIN, P.NORMAL_MAX);
   owner.visible = false;
   owner.position.set(DOOR.x, 0, DOOR.z-2);
@@ -1342,7 +1343,56 @@ function updateDoor(dt){
 /* ============================================================
    13. 飼い主AI
    ============================================================ */
+// 部屋の四隅（かくれんぼの死角になりやすい場所）。
+// 通常のランダム徘徊だけだと、隅にじっとしている犬を一度も見に来ない
+// まま滞在時間が尽きて帰ってしまうことがあるため、一定間隔でここを
+// 優先的に見回らせる（隠れ続けても安全ではなくする）。
+// 座標は「幾何学的な四隅」であって、そこに実在の家具があると
+// 飼い主が物理的に立てず巡回が機能しないため、毎回 家具を避けた
+// 最寄りの実在可能な地点へ解決してから使う。
+const CORNER_HINTS = [
+  { x: ROOM.minX+1.6, z: ROOM.minZ+1.6 },
+  { x: ROOM.maxX-1.6, z: ROOM.minZ+1.6 },
+  { x: ROOM.minX+1.6, z: ROOM.maxZ-1.6 },
+  { x: ROOM.maxX-1.6, z: ROOM.maxZ-1.6 },
+];
+const CORNER_CHECK_INTERVAL = 5.0;   // これだけ経つと、次の巡回先を隅に固定する
+
+function isWalkableSpot(x, z, margin){
+  if (x<ROOM.minX+0.7 || x>ROOM.maxX-0.7 || z<ROOM.minZ+0.7 || z>ROOM.maxZ-0.7) return false;
+  for (const f of furniture){
+    if (f.toppled || f.top < 0.25) continue;
+    if (x>f.minX-margin && x<f.maxX+margin && z>f.minZ-margin && z<f.maxZ+margin) return false;
+  }
+  return true;
+}
+
+// 隅のヒント座標が家具の中にある場合、そこから外側へ少しずつ離れながら
+// 実際に立てる最寄りの地点を探す
+function resolveCornerSpot(hint){
+  if (isWalkableSpot(hint.x, hint.z, 0.85)) return hint;
+  const cx = (ROOM.minX+ROOM.maxX)/2, cz = (ROOM.minZ+ROOM.maxZ)/2;
+  const dx = hint.x-cx, dz = hint.z-cz;
+  const dl = Math.hypot(dx,dz) || 1;
+  for (let r=1.0; r<12; r+=0.5){
+    const x = hint.x - (dx/dl)*r;   // 部屋の中心方向へ少しずつ寄せていく
+    const z = hint.z - (dz/dl)*r;
+    if (isWalkableSpot(x, z, 0.85)) return { x, z };
+  }
+  return { x:0, z:0 };  // 最終手段：部屋の中央
+}
+
 function pickOwnerTarget(){
+  // 見回りタイミング：隅を優先的にチェックしにいく
+  if (G.cornerCheckTimer !== undefined && G.cornerCheckTimer <= 0){
+    G.cornerCheckTimer = CORNER_CHECK_INTERVAL;
+    G.cornerIndex = ((G.cornerIndex ?? -1) + 1) % CORNER_HINTS.length;
+    const c = resolveCornerSpot(CORNER_HINTS[G.cornerIndex]);
+    G.ownerTarget.set(c.x, 0, c.z);
+    G.ownerScanning = true;   // 到着したら少し長めに見回す
+    return;
+  }
+  G.ownerScanning = false;
   for (let i=0;i<40;i++){
     const x = rand(ROOM.minX+1, ROOM.maxX-1);
     const z = rand(ROOM.minZ+1, ROOM.maxZ-1);
@@ -1429,6 +1479,10 @@ function setState(s){
     G.ownerStayTimer = rand(P.OWNER_STAY_MIN, P.OWNER_STAY_MAX);
     G.ownerWaitTimer = 0;
     G.ownerLeaving = false;
+    // 最初の1回はふつうに徘徊させ、しばらくしてから隅の見回りを開始する
+    // 見回りの巡回順は滞在をまたいで引き継ぐ（毎回同じ隅ばかり見に来ないように）
+    G.cornerCheckTimer = CORNER_CHECK_INTERVAL;
+    if (G.cornerIndex === undefined) G.cornerIndex = -1;
     pickOwnerTarget();
     showMsg('だれか きた…！ 👣', 1200);
   } else if (s === 'CAUGHT'){
@@ -1456,6 +1510,11 @@ function updateOwner(dt){
   if (G.ownerStayTimer <= 0 && !G.ownerLeaving && G.alertGauge < 35 && !G.suspicious){
     G.ownerLeaving = true;
     G.ownerTarget.set(DOOR.x,0,DOOR.z-1.0);
+  }
+
+  // 見回りタイマー：これが尽きると、次のpickOwnerTargetで隅を優先的に選ぶ
+  if (!G.ownerLeaving && G.cornerCheckTimer !== undefined){
+    G.cornerCheckTimer -= dt;
   }
 
   // 証拠を見つけたあとは、しつこく犬を探しに来る
@@ -1486,11 +1545,16 @@ function updateOwner(dt){
   if (dist < 0.45){
     if (G.ownerLeaving){ setState('NORMAL'); return; }
     G.ownerWaitTimer -= dt;
-    // 立ち止まって見回す（発見のチャンスを作る）
-    ownerYaw += Math.sin(G.elapsed*1.1) * P.SCAN_SPEED * dt;
+    // 立ち止まって見回す（発見のチャンスを作る）。
+    // 隅の見回り中は、普段より大きく首を振ってしっかり確認する。
+    const scanAmp = G.ownerScanning ? Math.PI*0.85 : P.SCAN_SPEED;
+    ownerYaw += Math.sin(G.elapsed*1.1) * scanAmp * dt;
     if (G.ownerWaitTimer <= 0){
       pickOwnerTarget();
-      G.ownerWaitTimer = rand(P.OWNER_WAIT_MIN, P.OWNER_WAIT_MAX);
+      // 隅の見回りは少し長めに留まる（隅にいる犬を見つけるチャンスを増やす）
+      G.ownerWaitTimer = G.ownerScanning
+        ? rand(P.OWNER_WAIT_MIN*1.8, P.OWNER_WAIT_MAX*1.8)
+        : rand(P.OWNER_WAIT_MIN, P.OWNER_WAIT_MAX);
     }
   } else {
     const nx=dx/dist, nz=dz/dist;
@@ -2854,6 +2918,7 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
   G.started = true;
   G.ended = false;
   G.caughtCount = 0;
+  G.cornerIndex = -1;   // 見回りの巡回順（ステージをまたいでは switchStage 側でリセットする）
   G.pendingEnd = null;
   G.normalTimer = rand(P.NORMAL_MIN, P.NORMAL_MAX);
   CAT.state = 'GONE';
@@ -2913,6 +2978,28 @@ function endGame(reason){
     lines.push('ただ、おなかが かなり あやしい。あとで たいへんかも…');
   }
 
+  if (G.stage === 'kitchen' && reason === 'caught'){
+    // ステージ1で3回バレたら「失敗」。クリア扱いにはせず、キッチンからやり直す。
+    title = `ステージ1 キッチン しっぱい…`;
+    lines.length = 0;
+    lines.push(`${P.MAX_CAUGHT}かい みつかって、とうとう つまみだされた…`);
+    lines.push(`（${G.eaten}こ たべたけど、クリアには ならなかった）`);
+    if (CAT.ate > 0 || CAT.wrecked > 0){
+      lines.push(`ネコに ${CAT.ate}こ よこどりされ、${CAT.wrecked}かい やらかされた…`);
+    }
+    lines.push('');
+    lines.push('もういちど、キッチンから ちょうせん！');
+    document.getElementById('retryBtn').textContent = 'キッチンから やりなおす';
+    document.getElementById('endTitle').textContent = title;
+    document.getElementById('endEaten').textContent = G.eaten;
+    document.getElementById('endCaught').textContent = G.caughtCount;
+    document.getElementById('endScore').textContent = G.score;
+    document.getElementById('endSummary').innerHTML = lines.join('<br>');
+    endOverlay.style.display = 'flex';
+    G.paused = true;
+    return;
+  }
+
   if (G.stage === 'living'){
     // リビング＝最終ステージ。ここで終わったらゲーム全体の総括
     G.ended = true;
@@ -2945,8 +3032,13 @@ function endGame(reason){
 }
 
 document.getElementById('retryBtn').addEventListener('click', ()=>{
-  // 【段階進行】キッチンが終わった直後だけ「ステージ2へ」。それ以外は最初から。
+  // 【段階進行】キッチンを「クリア」(食べ物切れ)で終えた直後だけ「ステージ2へ」。
+  // キッチンで3回バレて「しっぱい」した場合は、ステージ1からやり直す。
   if (G.stage === 'kitchen' && !STAGE.living.ended){
+    if (STAGE.kitchen.reason === 'caught'){
+      location.reload();   // キッチンからやり直す（reloadが最も確実）
+      return;
+    }
     endOverlay.style.display = 'none';
     G.paused = false;
     switchStage('living');
