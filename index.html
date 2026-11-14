@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- ホーム画面に追加して開くと、アドレスバーなしの全画面で表示される -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ナイショのごはん">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -172,6 +176,11 @@
     box-shadow:0 4px 0 #a1521a;
   }
   #retryBtn:active { transform:translateY(3px); box-shadow:0 1px 0 #a1521a; }
+
+/* ==== スマホ用パネル調整：スマホ（画面が低いとき）だけに効く。iPadには影響しない ==== */
+@media (orientation:landscape) and (max-height:500px), (orientation:portrait) and (max-height:700px){
+  #startBtn{position:sticky;bottom:6px;z-index:5;box-shadow:0 0 0 100vmax rgb(28,20,14);clip-path:inset(-8px -100vmax)}
+}
 </style>
 </head>
 <body>
